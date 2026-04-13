@@ -1,0 +1,32 @@
+# Entorno
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Datos (no versionar DB ni CSVs)
+data/downloads/*.csv
+data/downloads/_tmp_*/
+data/compra_agil.db
+data/compra_agil.db-wal
+data/compra_agil.db-shm
+
+# Logs
+logs/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
+*.override.yml
+
+# Screenshots de diagnóstico Playwright
+data/downloads/_diagnostico_*.png

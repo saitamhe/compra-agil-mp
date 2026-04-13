@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  compra-agil:
+    build: .
+    container_name: compra-agil-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data        # SQLite + CSVs descargados
+      - ./logs:/app/logs        # Logs de la aplicación
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

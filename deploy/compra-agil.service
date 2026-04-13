@@ -1,0 +1,37 @@
+[Unit]
+Description=CompraÁgil API — Mercado Público Chile
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=compra-agil
+Group=compra-agil
+WorkingDirectory=/opt/compra-agil-mp
+EnvironmentFile=/opt/compra-agil-mp/.env
+
+# Ruta al virtualenv
+ExecStart=/opt/compra-agil-mp/.venv/bin/uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 1 \
+    --log-level info
+
+# Reinicio automático
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Seguridad
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/compra-agil-mp/data /opt/compra-agil-mp/logs
+
+# Logs
+StandardOutput=append:/opt/compra-agil-mp/logs/service.log
+StandardError=append:/opt/compra-agil-mp/logs/service-error.log
+
+[Install]
+WantedBy=multi-user.target
