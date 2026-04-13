@@ -1,11 +1,6 @@
 """
-Procesador de CSVs descargados de CompraÁgil.
-
-Responsabilidades:
-- Detectar encoding y separador del CSV
-- Normalizar columnas
-- Mapear al esquema de BD
-- Insertar con deduplicación
+Procesador de CSVs de CompraÁgil.
+Usa chunks de pandas para manejar archivos de 500+ MB sin OOM.
 """
 import logging
 from pathlib import Path
@@ -18,9 +13,10 @@ from app.database import bulk_upsert, get_session, map_row_to_model
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+CHUNK_SIZE = 10_000   # filas por lote → ~50 MB RAM por chunk
+
 
 def _detect_encoding(path: Path) -> str:
-    """Detecta el encoding del archivo probando los más comunes."""
     for enc in ("utf-8-sig", "utf-8", "latin-1", "iso-8859-1", "cp1252"):
         try:
             with open(path, encoding=enc) as f:
@@ -32,7 +28,6 @@ def _detect_encoding(path: Path) -> str:
 
 
 def _detect_separator(path: Path, encoding: str) -> str:
-    """Detecta el separador del CSV (coma, punto y coma, tabulación)."""
     with open(path, encoding=encoding) as f:
         first_line = f.readline()
     counts = {sep: first_line.count(sep) for sep in [";", ",", "\t", "|"]}
@@ -40,80 +35,96 @@ def _detect_separator(path: Path, encoding: str) -> str:
 
 
 def _infer_region_from_filename(filename: str) -> str:
-    """Extrae el nombre de región del nombre del archivo."""
     stem = Path(filename).stem
-    # Formato: RegionName_YYYYMMDD_HHMMSS
-    parts = stem.rsplit("_", 2)
-    if len(parts) >= 3:
-        return parts[0].replace("_", " ").title()
-    return stem.replace("_", " ").title()
+    # Formato: COT_YYYY-MM_nombrearchivo → "Cot YYYY-MM"
+    parts = stem.split("_")
+    if len(parts) >= 2:
+        return f"Cot {parts[1]}" if parts[1] else stem
+    return stem
 
 
 def process_csv(path: Path) -> tuple[int, int]:
-    """
-    Lee un CSV descargado, lo normaliza e inserta en SQLite.
-    Retorna (filas_insertadas, filas_omitidas).
-    """
-    logger.info("Procesando: %s", path.name)
+    """Lee un CSV en chunks, normaliza e inserta en SQLite."""
+    logger.info("Procesando: %s (%.1f MB)", path.name, path.stat().st_size / 1024 / 1024)
 
     if not path.exists() or path.stat().st_size == 0:
         logger.warning("Archivo vacío o inexistente: %s", path)
         return 0, 0
 
-    # Detección automática de formato
     encoding = _detect_encoding(path)
     sep = _detect_separator(path, encoding)
     logger.debug("Encoding=%s  Separador='%s'", encoding, sep)
 
+    region_origen = _infer_region_from_filename(path.name)
+    total_inserted = 0
+    total_skipped = 0
+    chunk_num = 0
+
     try:
-        df = pd.read_csv(
+        reader = pd.read_csv(
             path,
             encoding=encoding,
             sep=sep,
-            dtype=str,            # todo como string, convertimos en db.map_row_to_model
+            dtype=str,
             keep_default_na=False,
             on_bad_lines="warn",
             engine="python",
+            chunksize=CHUNK_SIZE,
         )
+
+        # Detectar columnas del primer chunk
+        first_chunk = True
+
+        for chunk in reader:
+            chunk_num += 1
+
+            # Limpiar nombres de columnas (solo una vez)
+            chunk.columns = [c.strip() for c in chunk.columns]
+
+            if first_chunk:
+                logger.info("Columnas (%d): %s", len(chunk.columns), list(chunk.columns))
+                first_chunk = False
+
+            # Convertir a lista de dicts y mapear
+            mapped_rows = []
+            for _, row in chunk.iterrows():
+                row_dict = {k: v for k, v in row.to_dict().items() if v != ""}
+                if not row_dict:
+                    continue
+                mapped_rows.append(map_row_to_model(row_dict, region_origen, path.name))
+
+            if not mapped_rows:
+                continue
+
+            # Insertar chunk en BD
+            with get_session() as session:
+                ins, skip = bulk_upsert(mapped_rows, session)
+            total_inserted += ins
+            total_skipped += skip
+
+            if chunk_num % 10 == 0:
+                logger.info(
+                    "  chunk %d → %d insertadas, %d omitidas (total: %d)",
+                    chunk_num, ins, skip, total_inserted,
+                )
+
     except Exception as exc:
-        logger.error("Error leyendo CSV %s: %s", path.name, exc)
-        return 0, 0
+        logger.error("Error procesando %s en chunk %d: %s", path.name, chunk_num, exc)
+        return total_inserted, total_skipped
 
-    if df.empty:
-        logger.warning("CSV vacío después de leer: %s", path.name)
-        return 0, 0
+    logger.info("  ✓ %s: %d insertadas, %d duplicadas", path.name, total_inserted, total_skipped)
 
-    # Limpiar nombres de columnas
-    df.columns = [c.strip() for c in df.columns]
-    logger.info("Columnas detectadas (%d): %s", len(df.columns), list(df.columns))
+    # Eliminar CSV tras procesar para liberar disco
+    try:
+        path.unlink()
+        logger.debug("  Eliminado: %s", path.name)
+    except Exception:
+        pass
 
-    # Región origen desde nombre de archivo
-    region_origen = _infer_region_from_filename(path.name)
-
-    # Convertir filas a dicts y mapear al modelo
-    mapped_rows = []
-    for _, row in df.iterrows():
-        row_dict = row.to_dict()
-        # Eliminar columnas completamente vacías
-        row_dict = {k: v for k, v in row_dict.items() if v != ""}
-        if not row_dict:
-            continue
-        mapped = map_row_to_model(row_dict, region_origen, path.name)
-        mapped_rows.append(mapped)
-
-    if not mapped_rows:
-        return 0, 0
-
-    # Insertar en BD con deduplicación
-    with get_session() as session:
-        inserted, skipped = bulk_upsert(mapped_rows, session)
-
-    logger.info("  ✓ %d insertadas, %d duplicadas (omitidas)", inserted, skipped)
-    return inserted, skipped
+    return total_inserted, total_skipped
 
 
 def process_all(paths: list[Path]) -> dict:
-    """Procesa múltiples archivos CSV. Retorna resumen."""
     total_inserted = 0
     total_skipped = 0
     errors = []

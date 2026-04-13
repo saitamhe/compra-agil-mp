@@ -116,6 +116,7 @@ def init_db():
 
 
 def get_session() -> Session:
+    """Retorna una sesión. Soporta uso como context manager (with get_session() as s)."""
     if _SessionLocal is None:
         init_db()
     return _SessionLocal()
@@ -127,36 +128,72 @@ def get_session() -> Session:
 
 # Mapas de nombres de columnas CSV → modelo (case-insensitive, sin espacios)
 _COLUMN_MAP = {
-    # Variantes de nombres que puede traer el CSV de ChileCompra
+    # ── Columnas reales del CSV CompraÁgil (confirmadas por diagnóstico) ──
+    "codigocotizacion": "codigo_oc",
     "codigooc": "codigo_oc",
     "nrooc": "codigo_oc",
     "numerodeordendecompra": "codigo_oc",
+
     "tipodeoc": "tipo_oc",
     "tipooc": "tipo_oc",
+
+    # Organismo comprador
+    "nombreoopp": "nombre_organismo",
+    "razonsocialunidaddecompra": "nombre_organismo",
+    "nombreunidaddecompra": "nombre_organismo",
     "nombreorganismo": "nombre_organismo",
     "organismo": "nombre_organismo",
+
+    "rutunidaddecompra": "rut_organismo",
     "rutorganismo": "rut_organismo",
     "rutentidadcompradora": "rut_organismo",
+
     "region": "region",
     "nombreregion": "region",
+
+    # Producto / descripción
+    "nombrecotizacion": "nombre_producto",
+    "nombreproductogenerico": "nombre_producto",
+    "productocotzado": "nombre_producto",
+    "productocotizado": "nombre_producto",
     "nombreproducto": "nombre_producto",
+
+    "descripcioncotizacion": "descripcion",
+    "detallecotizacion": "descripcion",
     "descripcion": "descripcion",
     "descripcionproducto": "descripcion",
+
+    "cantidadsolicitada": "cantidad",
     "cantidad": "cantidad",
+
     "unidadmedida": "unidad_medida",
+
     "preciounitario": "precio_unitario",
     "preciounitarionetoestimado": "precio_unitario",
+
     "montototal": "monto_total",
+    "montototaldisponble": "monto_total",
     "montototalneto": "monto_total",
     "montoocneto": "monto_total",
+
+    "fechapublicacionparacotizar": "fecha_publicacion",
     "fechapublicacion": "fecha_publicacion",
     "fechacreacionoc": "fecha_publicacion",
+
+    "fechacierreParaCotizar": "fecha_cierre",
+    "fechacierreParacotizar": "fecha_cierre",
+    "fechacierreparacotizar": "fecha_cierre",
     "fechacierre": "fecha_cierre",
     "fechacierrerecepcionofertas": "fecha_cierre",
+
     "estado": "estado",
     "estadooc": "estado",
+
+    # Proveedor
+    "razonsocialproveedor": "nombre_proveedor",
     "nombreproveedor": "nombre_proveedor",
     "proveedor": "nombre_proveedor",
+
     "rutproveedor": "rut_proveedor",
 }
 
@@ -201,16 +238,33 @@ def map_row_to_model(row: dict, region_origen: str, archivo: str) -> dict:
 
 
 def bulk_upsert(rows: list[dict], session: Session) -> tuple[int, int]:
-    """Inserta filas ignorando duplicados. Retorna (insertadas, omitidas)."""
+    """
+    Inserta filas usando INSERT OR IGNORE (SQLite nativo).
+    Maneja duplicados tanto en BD como dentro del mismo batch.
+    Retorna (insertadas, omitidas).
+    """
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
     inserted = 0
     skipped = 0
+    # Deduplicar dentro del batch (mismo hash_row en el CSV)
+    seen: set[str] = set()
+    unique_rows = []
     for row in rows:
-        exists = session.query(CompraAgil.id).filter_by(hash_row=row["hash_row"]).first()
-        if exists:
+        h = row["hash_row"]
+        if h not in seen:
+            seen.add(h)
+            unique_rows.append(row)
+        else:
             skipped += 1
-            continue
-        obj = CompraAgil(**row)
-        session.add(obj)
-        inserted += 1
+
+    for row in unique_rows:
+        stmt = sqlite_insert(CompraAgil).values(**row).prefix_with("OR IGNORE")
+        result = session.execute(stmt)
+        if result.rowcount > 0:
+            inserted += 1
+        else:
+            skipped += 1
+
     session.commit()
     return inserted, skipped
