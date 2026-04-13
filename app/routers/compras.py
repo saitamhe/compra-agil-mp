@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
 
-from app.database import CompraAgil, get_session
+from app.database import CompraAgil, ScraperRun, get_session
 from app.models import (
     CompraDetalle, CompraResponse,
     PaginatedResponse, StatsResponse,
@@ -229,3 +229,68 @@ def get_organismos(
         {"nombre": r.nombre_organismo, "rut": r.rut_organismo, "total": r.total}
         for r in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# GET /compras/nuevas/lista — compras del último run del scraper
+# ---------------------------------------------------------------------------
+
+@router.get("/nuevas/lista", response_model=PaginatedResponse, summary="Compras de la última actualización")
+def get_nuevas(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(settings.default_page_size, ge=1, le=settings.max_page_size),
+    db: Session = Depends(get_db),
+):
+    # Buscar el último run exitoso
+    last_run = (
+        db.query(ScraperRun)
+        .filter(ScraperRun.status.in_(["success", "partial"]))
+        .order_by(ScraperRun.id.desc())
+        .first()
+    )
+
+    if not last_run:
+        # Sin runs aún: mostrar las últimas 2 horas
+        from datetime import datetime, timedelta
+        desde = datetime.utcnow() - timedelta(hours=2)
+    else:
+        desde = last_run.started_at
+
+    query = (
+        db.query(CompraAgil)
+        .filter(CompraAgil.fecha_descarga >= desde)
+        .order_by(desc(CompraAgil.id))
+    )
+
+    total = query.count()
+    pages = math.ceil(total / page_size) if total else 1
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return PaginatedResponse(total=total, page=page, page_size=page_size, pages=pages, data=items)
+
+
+# ---------------------------------------------------------------------------
+# GET /compras/nuevas/timestamp — cuándo fue la última actualización
+# ---------------------------------------------------------------------------
+
+@router.get("/nuevas/timestamp", summary="Timestamp de la última actualización")
+def get_nuevas_timestamp(db: Session = Depends(get_db)):
+    last_run = (
+        db.query(ScraperRun)
+        .filter(ScraperRun.status.in_(["success", "partial"]))
+        .order_by(ScraperRun.id.desc())
+        .first()
+    )
+    if not last_run:
+        return {"ultima_actualizacion": None, "nuevas": 0}
+
+    count = (
+        db.query(func.count(CompraAgil.id))
+        .filter(CompraAgil.fecha_descarga >= last_run.started_at)
+        .scalar()
+    )
+    return {
+        "ultima_actualizacion": last_run.started_at.isoformat() if last_run.started_at else None,
+        "nuevas": count,
+        "status": last_run.status,
+    }

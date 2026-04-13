@@ -8,7 +8,8 @@ from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import CompraAgil, ScraperRun, get_session, init_db
@@ -81,6 +82,9 @@ app.add_middleware(
 app.include_router(compras.router)
 app.include_router(admin.router)
 
+# Archivos estáticos (dashboard)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 
 # ---------------------------------------------------------------------------
 # Endpoints raíz
@@ -88,12 +92,8 @@ app.include_router(admin.router)
 
 @app.get("/", include_in_schema=False)
 def root():
-    return {
-        "servicio": "CompraÁgil API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "salud": "/health",
-    }
+    """Sirve el dashboard visual."""
+    return FileResponse("app/static/index.html")
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Sistema"])

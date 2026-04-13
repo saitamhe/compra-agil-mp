@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CompraÁgil — Mercado Público Chile</title>
+<style>
+  :root {
+    --rojo: #d52b1e;
+    --azul: #003087;
+    --azul-claro: #1a4fad;
+    --verde: #16a34a;
+    --verde-claro: #dcfce7;
+    --amarillo: #ca8a04;
+    --amarillo-claro: #fef9c3;
+    --gris: #f8fafc;
+    --borde: #e2e8f0;
+    --texto: #1e293b;
+    --texto-suave: #64748b;
+    --nueva-bg: #fffbeb;
+    --nueva-borde: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gris); color: var(--texto); font-size: 14px; }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
+    color: #fff; padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 58px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .bandera { display: flex; flex-direction: column; width: 22px; height: 16px; border-radius: 2px; overflow: hidden; }
+  .bandera span:nth-child(1) { background: var(--rojo); flex: 1; }
+  .bandera span:nth-child(2) { background: #fff; flex: 1; }
+  .logo h1 { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+  .logo small { font-size: 11px; opacity: .75; }
+  .header-meta { display: flex; align-items: center; gap: 16px; font-size: 12px; }
+  .badge-sched { background: rgba(255,255,255,.15); border-radius: 20px; padding: 4px 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .dot-green { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+  .dot-red { background: #f87171; }
+
+  /* MAIN */
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 16px; }
+
+  /* STATS */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .card {
+    background: #fff; border-radius: 10px; padding: 16px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07); border: 1px solid var(--borde);
+  }
+  .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--texto-suave); margin-bottom: 6px; }
+  .card-value { font-size: 28px; font-weight: 700; color: var(--azul); line-height: 1; }
+  .card-value.nueva { color: var(--amarillo); }
+  .card-value.verde { color: var(--verde); }
+  .card-sub { font-size: 11px; color: var(--texto-suave); margin-top: 4px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--borde); }
+  .tab {
+    padding: 8px 18px; border: none; background: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--texto-suave);
+    border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s;
+  }
+  .tab.active { color: var(--azul); border-bottom-color: var(--azul); }
+  .tab .count-badge {
+    background: var(--amarillo); color: #fff; border-radius: 10px;
+    padding: 1px 7px; font-size: 10px; margin-left: 6px;
+  }
+
+  /* FILTROS */
+  .filtros { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; }
+  .filtros input, .filtros select {
+    border: 1px solid var(--borde); border-radius: 6px; padding: 6px 10px;
+    font-size: 13px; outline: none; min-width: 150px;
+    transition: border-color .15s;
+  }
+  .filtros input:focus, .filtros select:focus { border-color: var(--azul-claro); }
+  .btn { padding: 7px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--azul); color: #fff; }
+  .btn-ghost { background: var(--borde); color: var(--texto); }
+
+  /* TABLA */
+  .tabla-wrap { background: #fff; border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--azul); color: #fff; text-align: left;
+    padding: 10px 12px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  }
+  tbody tr { border-bottom: 1px solid var(--borde); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f1f5ff; }
+  tbody tr.nueva-row { background: var(--nueva-bg); border-left: 3px solid var(--nueva-borde); }
+  tbody tr.nueva-row:hover { background: #fef3c7; }
+  td { padding: 9px 12px; font-size: 13px; vertical-align: middle; }
+  td.monto { text-align: right; font-weight: 600; font-family: monospace; font-size: 13px; }
+  .badge-nueva { background: var(--amarillo); color: #fff; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
+  .badge-estado { border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
+  .badge-vigente { background: var(--verde-claro); color: #15803d; }
+  .badge-cerrado { background: #fee2e2; color: #b91c1c; }
+  .badge-otro { background: #f1f5f9; color: var(--texto-suave); }
+  .text-suave { color: var(--texto-suave); }
+  .text-sm { font-size: 12px; }
+
+  /* PAGINACIÓN */
+  .paginacion { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--borde); }
+  .page-info { font-size: 12px; color: var(--texto-suave); }
+  .page-btns { display: flex; gap: 4px; }
+  .page-btn {
+    border: 1px solid var(--borde); background: #fff; border-radius: 5px;
+    padding: 4px 10px; cursor: pointer; font-size: 12px; transition: all .1s;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .page-btn.active { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* LOADING / EMPTY */
+  .loading { text-align: center; padding: 40px; color: var(--texto-suave); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--borde); border-top-color: var(--azul); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 50px; color: var(--texto-suave); }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+  /* ALERTA NUEVA */
+  .alerta-nueva {
+    background: var(--nueva-bg); border: 1px solid var(--nueva-borde);
+    border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px; font-size: 13px;
+  }
+  .alerta-nueva.hidden { display: none; }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .col-hide { display: none; }
+    header { height: auto; padding: 12px 16px; flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="bandera"><span></span><span></span></div>
+    <div>
+      <h1>CompraÁgil</h1>
+      <small>Mercado Público Chile — datos-abiertos.chilecompra.cl</small>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="badge-sched">
+      <span class="dot dot-green" id="sched-dot"></span>
+      <span id="sched-label">Cargando...</span>
+    </div>
+    <span id="proxima-run" style="opacity:.75"></span>
+  </div>
+</header>
+
+<main>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="card">
+      <div class="card-label">Total en BD</div>
+      <div class="card-value" id="stat-total">—</div>
+      <div class="card-sub">órdenes de compra</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Nuevas (último scraping)</div>
+      <div class="card-value nueva" id="stat-nuevas">—</div>
+      <div class="card-sub" id="stat-nuevas-fecha">sin actualización aún</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Monto Total</div>
+      <div class="card-value verde" id="stat-monto">—</div>
+      <div class="card-sub">CLP neto acumulado</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Regiones</div>
+      <div class="card-value" id="stat-regiones">—</div>
+      <div class="card-sub">con datos disponibles</div>
+    </div>
+  </div>
+
+  <!-- ALERTA NUEVAS -->
+  <div class="alerta-nueva hidden" id="alerta-nueva">
+    <span>✨</span>
+    <span id="alerta-texto"></span>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('todas')" id="tab-todas">Todas las compras</button>
+    <button class="tab" onclick="switchTab('nuevas')" id="tab-nuevas">
+      Nuevas (último update) <span class="count-badge" id="tab-nuevas-count">0</span>
+    </button>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros" id="filtros-todas">
+    <label>Búsqueda libre
+      <input type="text" id="f-q" placeholder="Producto, descripción..." oninput="debounce(loadTablas)"/>
+    </label>
+    <label>Región
+      <input type="text" id="f-region" placeholder="Ej: Metropolitana" oninput="debounce(loadTablas)"/>
+    </label>
+    <label>Organismo
+      <input type="text" id="f-organismo" placeholder="Nombre organismo..." oninput="debounce(loadTablas)"/>
+    </label>
+    <label>Estado
+      <input type="text" id="f-estado" placeholder="Ej: Aceptada" oninput="debounce(loadTablas)"/>
+    </label>
+    <label>Monto mín (CLP)
+      <input type="number" id="f-monto-min" placeholder="0" oninput="debounce(loadTablas)" style="min-width:110px"/>
+    </label>
+    <button class="btn btn-ghost" onclick="clearFilters()">Limpiar</button>
+  </div>
+
+  <!-- TABLA -->
+  <div class="tabla-wrap">
+    <div id="tabla-container">
+      <div class="loading"><div class="spinner"></div>Cargando datos...</div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = '';  // mismo origen
+let currentTab = 'todas';
+let currentPage = 1;
+let totalPages = 1;
+let debounceTimer = null;
+let nuevasIds = new Set();
+
+function debounce(fn, ms = 400) {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => { currentPage = 1; fn(); }, ms);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([loadHealth(), loadStats(), loadNuevasInfo()]);
+  await loadTablas();
+  setInterval(loadHealth, 30000);
+  setInterval(() => { loadStats(); loadNuevasInfo(); }, 60000);
+}
+
+// ── HEALTH / SCHEDULER ───────────────────────────────────────────────────
+async function loadHealth() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    const dot = document.getElementById('sched-dot');
+    const label = document.getElementById('sched-label');
+    dot.className = 'dot ' + (d.scheduler_running ? 'dot-green' : 'dot-red');
+    label.textContent = d.scheduler_running ? 'Scheduler activo' : 'Scheduler detenido';
+  } catch(e) {}
+}
+
+async function loadSchedulerNext() {
+  try {
+    const r = await fetch(`${API}/admin/status`, { headers: { 'X-API-Key': '' } });
+    // Si no hay clave configurada este fallará — ignorar
+  } catch(e) {}
+}
+
+// ── STATS ─────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/compras/stats/resumen`);
+    const d = await r.json();
+    document.getElementById('stat-total').textContent = fmt(d.total_compras);
+    document.getElementById('stat-monto').textContent = d.monto_total_sum ? fmtClp(d.monto_total_sum) : '—';
+    document.getElementById('stat-regiones').textContent = d.regiones.length;
+  } catch(e) {}
+}
+
+// ── NUEVAS INFO ───────────────────────────────────────────────────────────
+async function loadNuevasInfo() {
+  try {
+    const r = await fetch(`${API}/compras/nuevas/timestamp`);
+    const d = await r.json();
+    const n = d.nuevas || 0;
+    document.getElementById('stat-nuevas').textContent = fmt(n);
+    document.getElementById('tab-nuevas-count').textContent = n;
+    if (d.ultima_actualizacion) {
+      const fecha = new Date(d.ultima_actualizacion + 'Z');
+      document.getElementById('stat-nuevas-fecha').textContent = 'Actualizado ' + timeAgo(fecha);
+      if (n > 0) {
+        const alerta = document.getElementById('alerta-nueva');
+        document.getElementById('alerta-texto').textContent =
+          `✅ ${fmt(n)} órdenes nuevas registradas en la última actualización (${timeAgo(fecha)})`;
+        alerta.classList.remove('hidden');
+      }
+    }
+  } catch(e) {}
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  currentPage = 1;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  const filtros = document.getElementById('filtros-todas');
+  filtros.style.display = tab === 'todas' ? 'flex' : 'none';
+  loadTablas();
+}
+
+// ── CARGA DE TABLA ────────────────────────────────────────────────────────
+async function loadTablas() {
+  showLoading();
+  try {
+    let url, data;
+    if (currentTab === 'nuevas') {
+      url = `${API}/compras/nuevas/lista?page=${currentPage}&page_size=50`;
+      const r = await fetch(url);
+      data = await r.json();
+      renderTabla(data, true);
+    } else {
+      const params = buildParams();
+      url = `${API}/compras?${params}`;
+      // Cargar IDs nuevas para resaltarlas
+      await loadNuevasIds();
+      const r = await fetch(url);
+      data = await r.json();
+      renderTabla(data, false);
+    }
+    totalPages = data.pages || 1;
+    renderPaginacion(data);
+  } catch(e) {
+    document.getElementById('tabla-container').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div>Error al cargar datos. ¿Está la API corriendo?</div>`;
+  }
+}
+
+async function loadNuevasIds() {
+  try {
+    const r = await fetch(`${API}/compras/nuevas/lista?page=1&page_size=500`);
+    const d = await r.json();
+    nuevasIds = new Set(d.data.map(c => c.id));
+  } catch(e) { nuevasIds = new Set(); }
+}
+
+function buildParams() {
+  const p = new URLSearchParams();
+  p.set('page', currentPage);
+  p.set('page_size', 50);
+  p.set('order_by', 'id');
+  p.set('order_dir', 'desc');
+  const q = v('f-q'), region = v('f-region'), org = v('f-organismo'),
+        estado = v('f-estado'), montoMin = v('f-monto-min');
+  if (q) p.set('q', q);
+  if (region) p.set('region', region);
+  if (org) p.set('organismo', org);
+  if (estado) p.set('estado', estado);
+  if (montoMin) p.set('monto_min', montoMin);
+  return p.toString();
+}
+
+function clearFilters() {
+  ['f-q','f-region','f-organismo','f-estado','f-monto-min'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  currentPage = 1;
+  loadTablas();
+}
+
+// ── RENDER TABLA ──────────────────────────────────────────────────────────
+function renderTabla(data, soloNuevas) {
+  const items = data.data || [];
+  if (!items.length) {
+    document.getElementById('tabla-container').innerHTML =
+      `<div class="empty"><div class="empty-icon">${soloNuevas ? '🆕' : '🔍'}</div>
+       ${soloNuevas ? 'Sin compras nuevas en este período.' : 'Sin resultados con los filtros actuales.'}</div>`;
+    return;
+  }
+
+  const rows = items.map(c => {
+    const esNueva = soloNuevas || nuevasIds.has(c.id);
+    const estadoClass = estadoBadge(c.estado);
+    return `<tr class="${esNueva ? 'nueva-row' : ''}">
+      <td><span class="text-sm text-suave">${c.codigo_oc || '—'}</span>${esNueva ? '<span class="badge-nueva">NUEVA</span>' : ''}</td>
+      <td class="col-hide">${c.nombre_organismo ? trunc(c.nombre_organismo, 35) : '—'}</td>
+      <td>${c.region || c.region_origen || '—'}</td>
+      <td class="col-hide">${c.nombre_producto ? trunc(c.nombre_producto, 40) : (c.descripcion ? trunc(c.descripcion, 40) : '—')}</td>
+      <td><span class="badge-estado ${estadoClass}">${c.estado || '—'}</span></td>
+      <td class="monto">${c.monto_total ? fmtClp(c.monto_total) : '—'}</td>
+      <td class="col-hide text-suave text-sm">${c.fecha_publicacion ? c.fecha_publicacion.slice(0,10) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tabla-container').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Código OC</th>
+          <th class="col-hide">Organismo</th>
+          <th>Región</th>
+          <th class="col-hide">Producto / Descripción</th>
+          <th>Estado</th>
+          <th style="text-align:right">Monto CLP</th>
+          <th class="col-hide">Publicación</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="paginacion" id="paginacion"></div>`;
+
+  renderPaginacion(data);
+}
+
+function renderPaginacion(data) {
+  const el = document.getElementById('paginacion');
+  if (!el) return;
+  const { total, page, page_size, pages } = data;
+  const desde = ((page - 1) * page_size) + 1;
+  const hasta = Math.min(page * page_size, total);
+  el.innerHTML = `
+    <span class="page-info">${fmt(desde)}–${fmt(hasta)} de ${fmt(total)} registros</span>
+    <div class="page-btns">
+      <button class="page-btn" onclick="goPage(1)" ${page<=1?'disabled':''}>«</button>
+      <button class="page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>‹</button>
+      ${pageButtons(page, pages)}
+      <button class="page-btn" onclick="goPage(${page+1})" ${page>=pages?'disabled':''}>›</button>
+      <button class="page-btn" onclick="goPage(${pages})" ${page>=pages?'disabled':''}>»</button>
+    </div>`;
+}
+
+function pageButtons(current, total) {
+  const pages = [];
+  const range = 2;
+  for (let i = Math.max(1, current - range); i <= Math.min(total, current + range); i++) {
+    pages.push(`<button class="page-btn ${i===current?'active':''}" onclick="goPage(${i})">${i}</button>`);
+  }
+  return pages.join('');
+}
+
+function goPage(p) {
+  currentPage = p;
+  loadTablas();
+  window.scrollTo(0, 0);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function showLoading() {
+  document.getElementById('tabla-container').innerHTML =
+    '<div class="loading"><div class="spinner"></div>Cargando...</div>';
+}
+function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function fmt(n) { return (n||0).toLocaleString('es-CL'); }
+function fmtClp(n) {
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+  return '$' + Math.round(n).toLocaleString('es-CL');
+}
+function trunc(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+function estadoBadge(e) {
+  if (!e) return 'badge-otro';
+  const l = e.toLowerCase();
+  if (l.includes('acept') || l.includes('vigent') || l.includes('activ')) return 'badge-vigente';
+  if (l.includes('cancel') || l.includes('desierta') || l.includes('cerrad')) return 'badge-cerrado';
+  return 'badge-otro';
+}
+function timeAgo(date) {
+  const diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 60) return 'hace unos segundos';
+  if (diff < 3600) return `hace ${Math.floor(diff/60)} min`;
+  if (diff < 86400) return `hace ${Math.floor(diff/3600)}h`;
+  return `hace ${Math.floor(diff/86400)} días`;
+}
+
+init();
+</script>
+</body>
+</html>
