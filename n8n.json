@@ -1,0 +1,294 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "297dc5b3-3755-4d2e-9c76-8099b3b7d0eb",
+      "name": "Cron — Cada Hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -3472,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map(i => i.json);\n\n// Dedup usando static data de n8n (persiste entre ejecuciones)\nconst staticData = $getWorkflowStaticData('global');\nconst processed = staticData.processedCodes ?? [];\n\nconst newItems = items.filter(item => !processed.includes(item.codigo));\n\nif (newItems.length === 0) {\n  console.log('Sin items nuevos — todos ya procesados');\n  return [];\n}\n\n// Guardar códigos procesados (máx 2000 para no desbordar memoria)\nconst updated = [...new Set([...processed, ...newItems.map(i => i.codigo)])].slice(-2000);\nstaticData.processedCodes = updated;\n\nconsole.log(`Nuevos: ${newItems.length} | Ya procesados: ${items.length - newItems.length} | Total en memoria: ${updated.length}`);\n\n// Construir prompt para cada item nuevo\nreturn newItems.map(item => {\n  const monto = item.montos?.monto_disponible_clp\n    ? `$${Number(item.montos.monto_disponible_clp).toLocaleString('es-CL')} CLP`\n    : 'No informado';\n\n  const cierre = item.fechas?.fecha_cierre ?? 'No disponible';\n  const competidores = item.resumen?.total_ofertas_recibidas ?? 0;\n  const fechaCierre = item.fechas?.fecha_cierre\n    ? item.fechas.fecha_cierre.split(' ')[0]\n    : null;\n  const urlMP = `https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=${item.codigo}`;\n\n  const userPrompt = `Analiza esta Compra Ágil para HE FORGE SpA y devuelve SOLO JSON:\n\nCÓDIGO: ${item.codigo}\nNOMBRE: ${item.nombre}\nORGANISMO: ${item.institucion?.organismo_comprador}\nUNIDAD: ${item.institucion?.unidad_compra}\nREGIÓN: ${item.institucion?.nombre_region}\nMONTO: ${monto}\nCIERRE: ${cierre}\nCOMPETIDORES: ${competidores}\n\nJSON (sin markdown, sin texto extra):\n{\n  \"score\": <0-100>,\n  \"viabilidad\": \"alta|media|baja\",\n  \"resumen\": \"<máx 2 líneas>\",\n  \"justificacion\": \"<máx 3 líneas>\",\n  \"riesgo\": \"<1 línea>\",\n  \"accion\": \"cotizar|investigar|ignorar\",\n  \"precio_sugerido_clp\": <número o null>\n}`;\n\n  return { json: {\n    codigo: item.codigo,\n    nombre: item.nombre,\n    organismo: item.institucion?.organismo_comprador ?? '',\n    region: item.institucion?.nombre_region ?? '',\n    monto_clp: item.montos?.monto_disponible_clp ?? null,\n    fecha_cierre: fechaCierre,\n    url_mp: urlMP,\n    fecha_deteccion: new Date().toISOString().split('T')[0],\n    user_prompt: userPrompt\n  }};\n});"
+      },
+      "id": "6b7a04c1-7ec5-4d2c-ad36-b3ae33c556ef",
+      "name": "Construir Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2688,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_prompt }}",
+        "options": {
+          "systemMessage": "Eres un asistente estratégico especializado en licitaciones públicas chilenas (Mercado Público) para HE FORGE SpA, consultora tecnológica B2B operada en solitario por Matías Hernández, Puerto Montt.\n\nCapacidades HE FORGE: desarrollo web (WordPress, React, FastAPI), Power BI/DAX, automatización n8n, Python, VPS/hosting, bots Telegram/WhatsApp, ETL, análisis de datos, cursos capacitación TI, licencias software (revendedor), Telefonos,Hosting, VPS, administrativo, capacitaciones.\n\nBusca:\n- Compras ágiles: desarrollo web, hosting, capacitación TI, cursos IA/datos/Power BI, licencias software, soporte TI. Montos $300K-$7M CLP.\n- Licitaciones medianas: sistemas indicadores, plataformas reportería, consultoría, digitalización. $3M-$70M CLP.\n- Contratos recurrentes priorizados sobre proyectos únicos.\n\nDescarta automáticamente: insumos médicos, alimentos, vestuario, vehículos, construcción física, material agrícola.\n\nScore 0-100 donde:\n- 80-100: match directo (web, TI, capacitación, datos, licencias)\n- 60-79: posible con algo de adaptación\n- 40-59: dudoso, requiere investigar\n- 0-39: no aplica para HE FORGE\n\nResponde SIEMPRE en JSON puro, sin markdown, sin texto extra."
+        }
+      },
+      "id": "b943176e-685b-499c-8e9f-32383ea31599",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2448,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "bc36ee7a-eb76-46c5-85b8-1b0b909c7fb2",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -2576,
+        -576
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "bbPVoYFYcFrb4EUs",
+          "name": "HEFORGE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allInputs = $input.all();\nconst prompts = $('Construir Prompt').all();\nconst results = [];\n\nconst NOTION_TOKEN = 'Bearer PEGA_TU_NOTION_TOKEN';\nconst DATABASE_ID = '37217c326c5580788817ec44363e2577';\n\nfor (let i = 0; i < allInputs.length; i++) {\n  const agentOutput = allInputs[i].json.output ?? allInputs[i].json.text ?? JSON.stringify(allInputs[i].json);\n  const ctx = prompts[i].json;\n\n  let scoring;\n  try {\n    const clean = agentOutput.replace(/```json|```/g, '').trim();\n    const match = clean.match(/\\{[\\s\\S]*\\}/);\n    scoring = JSON.parse(match ? match[0] : clean);\n  } catch(e) {\n    scoring = {\n      score: 0, viabilidad: 'baja',\n      resumen: 'Error al parsear IA',\n      justificacion: String(agentOutput).substring(0, 200),\n      riesgo: 'Error de parsing',\n      accion: 'ignorar',\n      precio_sugerido_clp: null\n    };\n  }\n\n  const score = Number(scoring.score) || 0;\n\n  if (score < 40) {\n    continue;\n  }\n\n  // CHECK NOTION: ¿ya existe este código?\n  try {\n    const checkResp = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.notion.com/v1/databases/' + DATABASE_ID + '/query',\n      headers: {\n        'Authorization': NOTION_TOKEN,\n        'Content-Type': 'application/json',\n        'Notion-Version': '2022-06-28'\n      },\n      body: {\n        filter: {\n          property: 'Codigo',\n          title: { equals: ctx.codigo }\n        },\n        page_size: 1\n      }\n    });\n\n    if (checkResp.results?.length > 0) {\n      console.log(`⏭️ YA EXISTE ${ctx.codigo} — score ${score}`);\n      continue;\n    }\n  } catch(e) {\n    console.error(`⚠️ Check Notion falló ${ctx.codigo}: ${e.message} — creo igual`);\n  }\n\n  // CREAR en Notion\n  const properties = {\n    \"Codigo\": { \"title\": [{ \"text\": { \"content\": ctx.codigo } }] },\n    \"Nombre\": { \"rich_text\": [{ \"text\": { \"content\": ctx.nombre ?? '' } }] },\n    \"Score\": { \"number\": score },\n    \"Viabilidad\": { \"select\": { \"name\": scoring.viabilidad ?? 'baja' } },\n    \"Accion\": { \"select\": { \"name\": scoring.accion ?? 'ignorar' } },\n    \"Estado Seguimiento\": { \"select\": { \"name\": \"pendiente\" } },\n    \"Organismo\": { \"rich_text\": [{ \"text\": { \"content\": ctx.organismo ?? '' } }] },\n    \"Region\": { \"rich_text\": [{ \"text\": { \"content\": ctx.region ?? '' } }] },\n    \"Monto CLP\": { \"number\": ctx.monto_clp ?? null },\n    \"Resumen\": { \"rich_text\": [{ \"text\": { \"content\": (scoring.resumen ?? '').substring(0, 2000) } }] },\n    \"Justificacion\": { \"rich_text\": [{ \"text\": { \"content\": (scoring.justificacion ?? '').substring(0, 2000) } }] },\n    \"Riesgo\": { \"rich_text\": [{ \"text\": { \"content\": (scoring.riesgo ?? '').substring(0, 2000) } }] },\n    \"Precio Sugerido CLP\": { \"number\": scoring.precio_sugerido_clp ?? null },\n    \"URL MP\": { \"url\": ctx.url_mp ?? null },\n    \"Notificado Telegram\": { \"checkbox\": false }\n  };\n\n  if (ctx.fecha_cierre) {\n    properties[\"Fecha Cierre\"] = { \"date\": { \"start\": ctx.fecha_cierre } };\n  }\n  if (ctx.fecha_deteccion) {\n    properties[\"Fecha Deteccion\"] = { \"date\": { \"start\": ctx.fecha_deteccion } };\n  }\n\n  try {\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.notion.com/v1/pages',\n      headers: {\n        'Authorization': NOTION_TOKEN,\n        'Content-Type': 'application/json',\n        'Notion-Version': '2022-06-28'\n      },\n      body: {\n        parent: { database_id: DATABASE_ID },\n        properties\n      }\n    });\n\n    console.log(`✅ NUEVO ${ctx.codigo} — score ${score} — ${scoring.accion}`);\n\n    results.push({ json: {\n      notion_page_id: response.id,\n      codigo: ctx.codigo,\n      nombre: ctx.nombre,\n      organismo: ctx.organismo,\n      region: ctx.region,\n      monto_clp: ctx.monto_clp,\n      fecha_cierre: ctx.fecha_cierre,\n      url_mp: ctx.url_mp,\n      score,\n      viabilidad: scoring.viabilidad ?? 'baja',\n      accion: scoring.accion ?? 'ignorar',\n      resumen: scoring.resumen ?? '',\n      justificacion: scoring.justificacion ?? '',\n      riesgo: scoring.riesgo ?? ''\n    }});\n\n    await new Promise(r => setTimeout(r, 350));\n\n  } catch(err) {\n    console.error(`❌ Notion ${ctx.codigo}: ${err.message}`);\n  }\n}\n\nconsole.log(`Nuevos guardados: ${results.length} de ${allInputs.length}`);\n\nif (results.length === 0) {\n  return [{ json: { message: 'Sin items nuevos con score >= 40', total: allInputs.length } }];\n}\n\nreturn results;"
+      },
+      "id": "6338e1a3-235c-47d8-b51b-ea1a73f1c294",
+      "name": "Parsear Scoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2000,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "=8594675819",
+        "text": "=🎯 *Score {{ $('Parsear Scoring').item.json.score }}/100 — {{ $('Parsear Scoring').item.json.accion | upper }}*\n\n📋 *{{ $('Parsear Scoring').item.json.nombre }}*\n🏛 {{ $('Parsear Scoring').item.json.organismo }}\n📍 {{ $('Parsear Scoring').item.json.region }}\n💰 ${{ $('Parsear Scoring').item.json.monto_clp ? Number($('Parsear Scoring').item.json.monto_clp).toLocaleString('es-CL') : 'No informado' }} CLP\n📅 Cierre: {{ $('Parsear Scoring').item.json.fecha_cierre ?? 'No disponible' }}\n\n✅ *{{ $('Parsear Scoring').item.json.viabilidad | upper }}* — {{ $('Parsear Scoring').item.json.resumen }}\n💡 {{ $('Parsear Scoring').item.json.justificacion }}\n⚠️ {{ $('Parsear Scoring').item.json.riesgo }}\n\n🔗 [Ver en MP]({{ $('Parsear Scoring').item.json.url_mp }})",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": true,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "8258913c-63e6-4adb-a775-4695a8a729fd",
+      "name": "Telegram — Alerta Oportunidad",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        -1488,
+        -928
+      ],
+      "webhookId": "5f10e8d5-b80f-4f41-bbcb-2166f9bfc90c",
+      "credentials": {
+        "telegramApi": {
+          "id": "MlmeE6pGFrBOM9FJ",
+          "name": "HE FORGE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Parsear Scoring').item.json.notion_page_id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Notificado Telegram|checkbox",
+              "checkboxValue": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1c110f6c-50a3-4699-a668-1245bbc53a93",
+      "name": "Notion — Marcar Telegram Enviado",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1248,
+        -928
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "sExQlsJQFpew9eoZ",
+          "name": "Notion HE FORGE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TICKET = 'PEGA_TU_TICKET_MP';\nconst BASE = 'https://api2.mercadopublico.cl/v2/compra-agil';\n\nlet allItems = [];\nlet pagina = 1;\nlet totalPaginas = 1;\nlet reintentos = 0;\n\nwhile (pagina <= totalPaginas && reintentos < 5) {\n  let resp;\n  try {\n    resp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: BASE,\n      headers: { 'ticket': TICKET },\n      qs: {\n        ttl_cambio_ms: 43200000,\n        region: '10,11,9',\n        estado: 'publicada',\n        tamano_pagina: 50,\n        numero_pagina: pagina\n      }\n    });\n  } catch (err) {\n    if (err.message?.includes('429') || err.response?.status === 429) {\n      reintentos++;\n      console.log(`429 en página ${pagina} — reintento ${reintentos}/5, espero 5s`);\n      await new Promise(r => setTimeout(r, 5000));\n      continue;\n    }\n    throw err;\n  }\n\n  if (resp.success !== 'OK' || !resp.payload?.items) {\n    throw new Error('API Error: ' + JSON.stringify(resp.errors));\n  }\n\n  totalPaginas = resp.payload.paginacion.total_paginas;\n  allItems.push(...resp.payload.items);\n  console.log(`Página ${pagina}/${totalPaginas} — ${resp.payload.items.length} items (total: ${allItems.length})`);\n\n  reintentos = 0; // reset en éxito\n  pagina++;\n\n  // Pausa 2s entre páginas\n  if (pagina <= totalPaginas) {\n    await new Promise(r => setTimeout(r, 2000));\n  }\n}\n\nconst filtered = allItems.filter(item => (item.montos?.monto_disponible_clp ?? 0) > 0);\nconsole.log(`Total: ${allItems.length} | Con monto > 0: ${filtered.length}`);\n\nreturn filtered.map(item => ({ json: item }));"
+      },
+      "id": "d187079f-a15e-439a-a231-c95f26f36949",
+      "name": "Fetch + Extraer Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3040,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-score",
+              "leftValue": "={{ $('Parsear Scoring').item.json.score }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "15878630-0534-4e18-8186-3d1890fab487",
+      "name": "IF — Score >= 60?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        -816
+      ]
+    }
+  ],
+  "connections": {
+    "Cron — Cada Hora": {
+      "main": [
+        [
+          {
+            "node": "Fetch + Extraer Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parsear Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear Scoring": {
+      "main": [
+        [
+          {
+            "node": "IF — Score >= 60?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram — Alerta Oportunidad": {
+      "main": [
+        [
+          {
+            "node": "Notion — Marcar Telegram Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch + Extraer Items": {
+      "main": [
+        [
+          {
+            "node": "Construir Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Score >= 60?": {
+      "main": [
+        [
+          {
+            "node": "Telegram — Alerta Oportunidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2e456212eb200d311f641102ae0f1f4af1b984384fc98aedf73ab9f003654754"
+  }
+}

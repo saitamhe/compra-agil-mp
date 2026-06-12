@@ -1,0 +1,127 @@
+/* ============================================================
+   OportunIA — tokens de diseño y estilos base
+   Paleta sobria (azul institucional) + semáforo accesible.
+   Modo claro/oscuro vía [data-theme] en <html>.
+   ============================================================ */
+
+:root {
+  /* Fondo y superficie */
+  --bg: oklch(0.975 0.005 240);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.955 0.006 240);
+  --border: oklch(0.88 0.01 240);
+  --border-strong: oklch(0.74 0.015 240);
+
+  /* Texto */
+  --text: oklch(0.24 0.02 250);
+  --text-2: oklch(0.45 0.02 250);
+
+  /* Primario (azul institucional sobrio; el matiz se ajusta en Tweaks) */
+  --accent-hue: 252;
+  --primary: oklch(0.42 0.11 var(--accent-hue));
+  --primary-hover: oklch(0.36 0.11 var(--accent-hue));
+  --primary-soft: oklch(0.93 0.03 var(--accent-hue));
+  --on-primary: #ffffff;
+
+  /* Semáforo del score (AA sobre sus fondos suaves) */
+  --ok: oklch(0.42 0.12 152);
+  --ok-soft: oklch(0.93 0.05 152);
+  --warn: oklch(0.45 0.11 85);
+  --warn-soft: oklch(0.95 0.06 95);
+  --bad: oklch(0.46 0.15 27);
+  --bad-soft: oklch(0.93 0.04 27);
+
+  --shadow: 0 1px 2px oklch(0.2 0.02 250 / 0.06), 0 4px 12px oklch(0.2 0.02 250 / 0.07);
+  --shadow-lg: 0 4px 8px oklch(0.2 0.02 250 / 0.1), 0 12px 32px oklch(0.2 0.02 250 / 0.14);
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --bg: oklch(0.19 0.015 250);
+  --surface: oklch(0.24 0.015 250);
+  --surface-2: oklch(0.29 0.015 250);
+  --border: oklch(0.36 0.015 250);
+  --border-strong: oklch(0.48 0.015 250);
+
+  --text: oklch(0.94 0.005 250);
+  --text-2: oklch(0.72 0.01 250);
+
+  --primary: oklch(0.72 0.1 var(--accent-hue));
+  --primary-hover: oklch(0.78 0.1 var(--accent-hue));
+  --primary-soft: oklch(0.32 0.05 var(--accent-hue));
+  --on-primary: oklch(0.16 0.02 var(--accent-hue));
+
+  --ok: oklch(0.78 0.13 152);
+  --ok-soft: oklch(0.3 0.05 152);
+  --warn: oklch(0.82 0.12 90);
+  --warn-soft: oklch(0.32 0.05 90);
+  --bad: oklch(0.78 0.13 27);
+  --bad-soft: oklch(0.32 0.05 27);
+
+  --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 12px oklch(0 0 0 / 0.3);
+  --shadow-lg: 0 4px 8px oklch(0 0 0 / 0.4), 0 12px 32px oklch(0 0 0 / 0.45);
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Public Sans", "Helvetica Neue", Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { font-size: var(--font-base, 17px); line-height: 1.55; }
+
+/* Foco visible SIEMPRE (WCAG 2.2) */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+html[data-theme="dark"] :focus-visible { outline-color: oklch(0.85 0.08 var(--accent-hue)); }
+
+/* Saltar al contenido */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 100;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus { left: 8px; }
+
+/* Scrollbars discretos en el kanban */
+.kanban-scroll { scrollbar-width: thin; }
+
+/* Animaciones suaves, respetando reduced-motion */
+@media (prefers-reduced-motion: no-preference) {
+  .screen-enter { animation: screenIn 0.22s ease both; }
+  @keyframes screenIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* Tarjeta arrastrándose */
+.dragging { opacity: 0.45; }
+.drop-target { outline: 3px dashed var(--primary); outline-offset: -3px; background: var(--primary-soft); }
+
+/* Texto pequeño de apoyo nunca menor a 14px */
+.text-help { font-size: 0.875em; color: var(--text-2); }
+
+@media print {
+  .no-print { display: none !important; }
+}
