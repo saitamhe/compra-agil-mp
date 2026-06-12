@@ -1,0 +1,62 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "300c924b-feb3-4bb1-b421-642308bd56e8",
+      "name": "Cron — Cada 2 Horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8000/admin/sync-mp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "mercadopublcio2025"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Sync MP → BD Interna",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-480, 0],
+      "notes": "Descarga compras ágiles de MP API y las guarda en mp_items.\nSin scoring — cada usuario ejecuta su propio análisis con el botón Actualizar."
+    }
+  ],
+  "connections": {
+    "Cron — Cada 2 Horas": {
+      "main": [
+        [
+          {
+            "node": "Sync MP → BD Interna",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "2e456212eb200d311f641102ae0f1f4af1b984384fc98aedf73ab9f003654754"
+  }
+}

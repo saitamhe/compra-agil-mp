@@ -1,481 +1,528 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CompraÁgil — Mercado Público Chile</title>
-<style>
-  :root {
-    --rojo: #d52b1e;
-    --azul: #003087;
-    --azul-claro: #1a4fad;
-    --verde: #16a34a;
-    --verde-claro: #dcfce7;
-    --amarillo: #ca8a04;
-    --amarillo-claro: #fef9c3;
-    --gris: #f8fafc;
-    --borde: #e2e8f0;
-    --texto: #1e293b;
-    --texto-suave: #64748b;
-    --nueva-bg: #fffbeb;
-    --nueva-borde: #f59e0b;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gris); color: var(--texto); font-size: 14px; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompraÁgil SaaS — Mercado Público</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
+  <style>
+    :root {
+      --primary: #1a56db;
+      --primary-dark: #1240aa;
+      --success: #0e9f6e;
+      --warning: #c27803;
+      --danger: #e02424;
+      --bg: #f9fafb;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-  /* HEADER */
-  header {
-    background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
-    color: #fff; padding: 0 24px;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 58px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
-  }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .bandera { display: flex; flex-direction: column; width: 22px; height: 16px; border-radius: 2px; overflow: hidden; }
-  .bandera span:nth-child(1) { background: var(--rojo); flex: 1; }
-  .bandera span:nth-child(2) { background: #fff; flex: 1; }
-  .logo h1 { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
-  .logo small { font-size: 11px; opacity: .75; }
-  .header-meta { display: flex; align-items: center; gap: 16px; font-size: 12px; }
-  .badge-sched { background: rgba(255,255,255,.15); border-radius: 20px; padding: 4px 12px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-  .dot-green { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-  .dot-red { background: #f87171; }
+    nav { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .nav-brand { font-weight: 700; font-size: 1.1rem; color: var(--primary); }
+    .nav-brand span { color: var(--text); font-weight: 400; }
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+    .nav-user { font-size: .85rem; color: var(--muted); }
 
-  /* MAIN */
-  main { max-width: 1280px; margin: 0 auto; padding: 20px 16px; }
+    .page { display: none; }
+    .page.active { display: block; }
 
-  /* STATS */
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
-  .card {
-    background: #fff; border-radius: 10px; padding: 16px 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.07); border: 1px solid var(--borde);
-  }
-  .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--texto-suave); margin-bottom: 6px; }
-  .card-value { font-size: 28px; font-weight: 700; color: var(--azul); line-height: 1; }
-  .card-value.nueva { color: var(--amarillo); }
-  .card-value.verde { color: var(--verde); }
-  .card-sub { font-size: 11px; color: var(--texto-suave); margin-top: 4px; }
+    .auth-wrap { min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px; width: 100%; max-width: 420px; }
+    .auth-card h2 { margin-bottom: 4px; }
+    .auth-card p { color: var(--muted); font-size: .9rem; margin-bottom: 24px; }
+    .auth-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .auth-tab { padding: 8px 16px; cursor: pointer; font-size: .9rem; color: var(--muted); border-bottom: 2px solid transparent; transition: all .2s; }
+    .auth-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-  /* TABS */
-  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--borde); }
-  .tab {
-    padding: 8px 18px; border: none; background: none; cursor: pointer;
-    font-size: 13px; font-weight: 600; color: var(--texto-suave);
-    border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s;
-  }
-  .tab.active { color: var(--azul); border-bottom-color: var(--azul); }
-  .tab .count-badge {
-    background: var(--amarillo); color: #fff; border-radius: 10px;
-    padding: 1px 7px; font-size: 10px; margin-left: 6px;
-  }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 6px; }
+    input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: .95rem; font-family: inherit; transition: border-color .2s; background: var(--bg); }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+    textarea { resize: vertical; min-height: 100px; }
 
-  /* FILTROS */
-  .filtros { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
-  .filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; }
-  .filtros input, .filtros select {
-    border: 1px solid var(--borde); border-radius: 6px; padding: 6px 10px;
-    font-size: 13px; outline: none; min-width: 150px;
-    transition: border-color .15s;
-  }
-  .filtros input:focus, .filtros select:focus { border-color: var(--azul-claro); }
-  .btn { padding: 7px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s; }
-  .btn:hover { opacity: .85; }
-  .btn-primary { background: var(--azul); color: #fff; }
-  .btn-ghost { background: var(--borde); color: var(--texto); }
+    .btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: .9rem; font-weight: 500; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+    .btn-outline:hover { background: rgba(26,86,219,.05); }
+    .btn-sm { padding: 6px 12px; font-size: .8rem; }
+    .btn-full { width: 100%; justify-content: center; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
 
-  /* TABLA */
-  .tabla-wrap { background: #fff; border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
-  table { width: 100%; border-collapse: collapse; }
-  thead th {
-    background: var(--azul); color: #fff; text-align: left;
-    padding: 10px 12px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  }
-  tbody tr { border-bottom: 1px solid var(--borde); transition: background .1s; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: #f1f5ff; }
-  tbody tr.nueva-row { background: var(--nueva-bg); border-left: 3px solid var(--nueva-borde); }
-  tbody tr.nueva-row:hover { background: #fef3c7; }
-  td { padding: 9px 12px; font-size: 13px; vertical-align: middle; }
-  td.monto { text-align: right; font-weight: 600; font-family: monospace; font-size: 13px; }
-  .badge-nueva { background: var(--amarillo); color: #fff; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
-  .badge-estado { border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
-  .badge-vigente { background: var(--verde-claro); color: #15803d; }
-  .badge-cerrado { background: #fee2e2; color: #b91c1c; }
-  .badge-otro { background: #f1f5f9; color: var(--texto-suave); }
-  .text-suave { color: var(--texto-suave); }
-  .text-sm { font-size: 12px; }
+    .dashboard { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .dashboard-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .dashboard-header h1 { font-size: 1.4rem; }
 
-  /* PAGINACIÓN */
-  .paginacion { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--borde); }
-  .page-info { font-size: 12px; color: var(--texto-suave); }
-  .page-btns { display: flex; gap: 4px; }
-  .page-btn {
-    border: 1px solid var(--borde); background: #fff; border-radius: 5px;
-    padding: 4px 10px; cursor: pointer; font-size: 12px; transition: all .1s;
-  }
-  .page-btn:hover:not(:disabled) { background: var(--azul); color: #fff; border-color: var(--azul); }
-  .page-btn.active { background: var(--azul); color: #fff; border-color: var(--azul); }
-  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; }
+    .stat-card .label { color: var(--muted); font-size: .8rem; margin-top: 4px; }
 
-  /* LOADING / EMPTY */
-  .loading { text-align: center; padding: 40px; color: var(--texto-suave); }
-  .spinner { width: 32px; height: 32px; border: 3px solid var(--borde); border-top-color: var(--azul); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 10px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .empty { text-align: center; padding: 50px; color: var(--texto-suave); }
-  .empty-icon { font-size: 40px; margin-bottom: 10px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 500; background: var(--card); border: 1px solid var(--border); color: var(--muted); transition: all .2s; }
+    .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-  /* ALERTA NUEVA */
-  .alerta-nueva {
-    background: var(--nueva-bg); border: 1px solid var(--nueva-borde);
-    border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;
-    display: flex; align-items: center; gap: 10px; font-size: 13px;
-  }
-  .alerta-nueva.hidden { display: none; }
+    .opp-list { display: flex; flex-direction: column; gap: 12px; }
+    .opp-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: box-shadow .2s; }
+    .opp-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    .opp-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .opp-title { font-weight: 600; font-size: .95rem; margin-bottom: 4px; }
+    .opp-org { color: var(--muted); font-size: .85rem; }
+    .opp-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 600; }
+    .badge-score-high { background: #d1fae5; color: #065f46; }
+    .badge-score-mid  { background: #fef3c7; color: #92400e; }
+    .badge-score-low  { background: #fee2e2; color: #991b1b; }
+    .badge-cotizar    { background: #dbeafe; color: #1e40af; }
+    .badge-investigar { background: #fef3c7; color: #92400e; }
+    .badge-ignorar    { background: #f3f4f6; color: #6b7280; }
+    .opp-body { margin-top: 12px; font-size: .875rem; color: var(--muted); }
+    .opp-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; flex-wrap: wrap; gap: 8px; }
 
-  /* RESPONSIVE */
-  @media (max-width: 768px) {
-    .stats { grid-template-columns: 1fr 1fr; }
-    .col-hide { display: none; }
-    header { height: auto; padding: 12px 16px; flex-direction: column; gap: 8px; }
-  }
-</style>
+    .config-wrap { max-width: 720px; margin: 0 auto; padding: 24px; }
+    .config-wrap h2 { margin-bottom: 4px; }
+    .config-wrap .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 24px; }
+    .section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+    .section h3 { margin-bottom: 16px; font-size: 1rem; }
+    .ai-hint { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; font-size: .85rem; color: #1e40af; margin-bottom: 16px; }
+
+    .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+    .page-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); cursor: pointer; font-size: .85rem; transition: all .2s; }
+    .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .page-btn:hover:not(.active) { background: var(--bg); }
+
+    .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: .9rem; }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+    .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-state { text-align: center; padding: 40px; color: var(--muted); }
+    .empty-state { text-align: center; padding: 60px 24px; color: var(--muted); }
+    .empty-state h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--text); }
+
+    @media (max-width: 600px) {
+      .dashboard { padding: 16px; }
+      .opp-header { flex-direction: column; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="bandera"><span></span><span></span></div>
-    <div>
-      <h1>CompraÁgil</h1>
-      <small>Mercado Público Chile — datos-abiertos.chilecompra.cl</small>
+<nav>
+  <div class="nav-brand">CompraÁgil <span>SaaS</span></div>
+  <div class="nav-actions">
+    <span class="nav-user" id="navUserEmail"></span>
+    <button class="btn btn-outline btn-sm" id="btnConfig" style="display:none" onclick="showPage('config')">⚙️ Configurar</button>
+    <button class="btn btn-outline btn-sm" id="btnDash" style="display:none" onclick="showPage('dashboard')">📊 Dashboard</button>
+    <button class="btn btn-sm" id="btnLogout" style="display:none; background:#f3f4f6; color:#374151" onclick="logout()">Salir</button>
+  </div>
+</nav>
+
+<!-- AUTH -->
+<div class="page active" id="page-auth">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2>Bienvenido</h2>
+      <p>Monitoreo inteligente de Compras Ágiles — Mercado Público Chile</p>
+      <div class="auth-tabs">
+        <div class="auth-tab active" onclick="switchAuthTab('login')">Iniciar sesión</div>
+        <div class="auth-tab" onclick="switchAuthTab('register')">Registrarse</div>
+      </div>
+      <div id="authAlert"></div>
+      <form id="formLogin" onsubmit="doLogin(event)">
+        <div class="form-group"><label>Email</label><input type="email" id="loginEmail" required placeholder="tu@empresa.cl" /></div>
+        <div class="form-group"><label>Contraseña</label><input type="password" id="loginPassword" required placeholder="••••••••" /></div>
+        <button type="submit" class="btn btn-primary btn-full" id="btnLogin">Iniciar sesión</button>
+      </form>
+      <form id="formRegister" style="display:none" onsubmit="doRegister(event)">
+        <div class="form-group"><label>Email</label><input type="email" id="regEmail" required placeholder="tu@empresa.cl" /></div>
+        <div class="form-group"><label>Contraseña (mín. 8 caracteres)</label><input type="password" id="regPassword" required placeholder="••••••••" minlength="8" /></div>
+        <div class="form-group"><label>Nombre</label><input type="text" id="regName" placeholder="Nombre completo" /></div>
+        <div class="form-group"><label>Empresa</label><input type="text" id="regCompany" placeholder="Nombre de tu empresa" /></div>
+        <button type="submit" class="btn btn-primary btn-full" id="btnRegister">Crear cuenta</button>
+      </form>
     </div>
   </div>
-  <div class="header-meta">
-    <div class="badge-sched">
-      <span class="dot dot-green" id="sched-dot"></span>
-      <span id="sched-label">Cargando...</span>
+</div>
+
+<!-- CONFIG -->
+<div class="page" id="page-config">
+  <div class="config-wrap">
+    <h2>⚙️ Configuración de perfil</h2>
+    <p class="subtitle">Define cómo la IA analiza las Compras Ágiles para tu empresa.</p>
+    <div id="configAlert"></div>
+
+    <div class="section">
+      <h3>🤖 Generador de prompt con IA</h3>
+      <div class="ai-hint">Describe tu empresa y la IA generará automáticamente el prompt optimizado para buscar las mejores Compras Ágiles para ti.</div>
+      <div class="form-group"><label>Descripción de tu empresa y servicios</label><textarea id="businessDescription" rows="5" placeholder="Ej: Somos una consultora tecnológica especializada en desarrollo web, Power BI, automatización n8n, Python..."></textarea></div>
+      <div class="form-group"><label>Contexto adicional (opcional)</label><input type="text" id="extraContext" placeholder="Ej: Solo región de Los Lagos, montos entre 500K y 5M CLP" /></div>
+      <button class="btn btn-primary" onclick="generatePrompt()" id="btnGeneratePrompt">✨ Generar prompt con IA</button>
     </div>
-    <span id="proxima-run" style="opacity:.75"></span>
-  </div>
-</header>
 
-<main>
-
-  <!-- STATS -->
-  <div class="stats">
-    <div class="card">
-      <div class="card-label">Total en BD</div>
-      <div class="card-value" id="stat-total">—</div>
-      <div class="card-sub">órdenes de compra</div>
+    <div class="section">
+      <h3>📝 Prompt del sistema</h3>
+      <div class="form-group"><label>Prompt generado / personalizado</label><textarea id="systemPrompt" rows="10" placeholder="El prompt aparecerá aquí después de generarlo..."></textarea></div>
     </div>
-    <div class="card">
-      <div class="card-label">Nuevas (último scraping)</div>
-      <div class="card-value nueva" id="stat-nuevas">—</div>
-      <div class="card-sub" id="stat-nuevas-fecha">sin actualización aún</div>
+
+    <div class="section">
+      <h3>🔍 Filtros de búsqueda</h3>
+      <div class="form-group"><label>Score mínimo para notificar (0-100)</label><input type="number" id="minScore" min="0" max="100" value="60" /></div>
+      <div class="form-group"><label>Monto mínimo CLP</label><input type="number" id="minAmount" min="0" placeholder="0" /></div>
+      <div class="form-group"><label>Monto máximo CLP (vacío = sin límite)</label><input type="number" id="maxAmount" placeholder="Sin límite" /></div>
     </div>
-    <div class="card">
-      <div class="card-label">Monto Total</div>
-      <div class="card-value verde" id="stat-monto">—</div>
-      <div class="card-sub">CLP neto acumulado</div>
+
+    <div class="section">
+      <h3>📱 Notificaciones Telegram</h3>
+      <div class="form-group"><label>Chat ID de Telegram</label><input type="text" id="telegramChatId" placeholder="Ej: 8594675819" /></div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="telegramEnabled" style="width:auto" /><label for="telegramEnabled" style="margin:0">Activar notificaciones Telegram</label></div>
     </div>
-    <div class="card">
-      <div class="card-label">Regiones</div>
-      <div class="card-value" id="stat-regiones">—</div>
-      <div class="card-sub">con datos disponibles</div>
-    </div>
-  </div>
 
-  <!-- ALERTA NUEVAS -->
-  <div class="alerta-nueva hidden" id="alerta-nueva">
-    <span>✨</span>
-    <span id="alerta-texto"></span>
-  </div>
-
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('todas')" id="tab-todas">Todas las compras</button>
-    <button class="tab" onclick="switchTab('nuevas')" id="tab-nuevas">
-      Nuevas (último update) <span class="count-badge" id="tab-nuevas-count">0</span>
-    </button>
-  </div>
-
-  <!-- FILTROS -->
-  <div class="filtros" id="filtros-todas">
-    <label>Búsqueda libre
-      <input type="text" id="f-q" placeholder="Producto, descripción..." oninput="debounce(loadTablas)"/>
-    </label>
-    <label>Región
-      <input type="text" id="f-region" placeholder="Ej: Metropolitana" oninput="debounce(loadTablas)"/>
-    </label>
-    <label>Organismo
-      <input type="text" id="f-organismo" placeholder="Nombre organismo..." oninput="debounce(loadTablas)"/>
-    </label>
-    <label>Estado
-      <input type="text" id="f-estado" placeholder="Ej: Aceptada" oninput="debounce(loadTablas)"/>
-    </label>
-    <label>Monto mín (CLP)
-      <input type="number" id="f-monto-min" placeholder="0" oninput="debounce(loadTablas)" style="min-width:110px"/>
-    </label>
-    <button class="btn btn-ghost" onclick="clearFilters()">Limpiar</button>
-  </div>
-
-  <!-- TABLA -->
-  <div class="tabla-wrap">
-    <div id="tabla-container">
-      <div class="loading"><div class="spinner"></div>Cargando datos...</div>
+    <div style="display:flex;gap:12px">
+      <button class="btn btn-primary" onclick="saveConfig()" id="btnSaveConfig">💾 Guardar configuración</button>
+      <button class="btn btn-outline" onclick="showPage('dashboard')">← Volver al dashboard</button>
     </div>
   </div>
+</div>
 
-</main>
+<!-- DASHBOARD -->
+<div class="page" id="page-dashboard">
+  <div class="dashboard">
+    <div class="dashboard-header">
+      <div>
+        <h1>📊 Mis oportunidades</h1>
+        <p style="color:var(--muted);font-size:.85rem" id="dashSubtitle">Cargando...</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" id="btnRefresh" onclick="refreshOpportunities()">🔄 Actualizar</button>
+        <button class="btn btn-sm" id="btnReset" onclick="resetAndRefresh()" style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5" title="Borra los resultados y re-evalúa todo con tu prompt actual">🗑️ Re-evaluar todo</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="value" id="statTotal">-</div><div class="label">Total oportunidades</div></div>
+      <div class="stat-card"><div class="value" id="statCotizar">-</div><div class="label">Para cotizar</div></div>
+      <div class="stat-card"><div class="value" id="statScore">-</div><div class="label">Score promedio</div></div>
+      <div class="stat-card"><div class="value" id="statMonto">-</div><div class="label">Potencial estimado</div></div>
+    </div>
+
+    <div class="tabs" id="filterTabs">
+      <div class="tab active" onclick="setFilter('all')">Todas</div>
+      <div class="tab" onclick="setFilter('cotizar')">🎯 Cotizar</div>
+      <div class="tab" onclick="setFilter('investigar')">🔍 Investigar</div>
+      <div class="tab" onclick="setFilter('ignorar')">❌ Ignorar</div>
+    </div>
+
+    <div id="dashAlert"></div>
+    <div id="oppList" class="opp-list"><div class="loading-state">Cargando oportunidades...</div></div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
 
 <script>
-const API = '';  // mismo origen
-let currentTab = 'todas';
-let currentPage = 1;
-let totalPages = 1;
-let debounceTimer = null;
-let nuevasIds = new Set();
+const API = '';
+let token = localStorage.getItem('access_token');
+let currentFilter = 'all';
 
-function debounce(fn, ms = 400) {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => { currentPage = 1; fn(); }, ms);
+window.addEventListener('DOMContentLoaded', () => {
+  if (token) { showLoggedIn(); showPage('dashboard'); loadDashboard(); }
+  else showPage('auth');
+});
+
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i===0)===(tab==='login')));
+  document.getElementById('formLogin').style.display = tab==='login' ? '' : 'none';
+  document.getElementById('formRegister').style.display = tab==='register' ? '' : 'none';
+  document.getElementById('authAlert').innerHTML = '';
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────
-async function init() {
-  await Promise.all([loadHealth(), loadStats(), loadNuevasInfo()]);
-  await loadTablas();
-  setInterval(loadHealth, 30000);
-  setInterval(() => { loadStats(); loadNuevasInfo(); }, 60000);
-}
-
-// ── HEALTH / SCHEDULER ───────────────────────────────────────────────────
-async function loadHealth() {
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Ingresando...';
   try {
-    const r = await fetch(`${API}/health`);
-    const d = await r.json();
-    const dot = document.getElementById('sched-dot');
-    const label = document.getElementById('sched-label');
-    dot.className = 'dot ' + (d.scheduler_running ? 'dot-green' : 'dot-red');
-    label.textContent = d.scheduler_running ? 'Scheduler activo' : 'Scheduler detenido';
-  } catch(e) {}
+    const res = await api('/auth/login', 'POST', { email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value });
+    saveTokens(res); showLoggedIn(res.email); showPage('dashboard'); await loadDashboard();
+  } catch(err) { showAlert('authAlert', err.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Iniciar sesión'; }
 }
 
-async function loadSchedulerNext() {
+async function doRegister(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnRegister');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creando cuenta...';
   try {
-    const r = await fetch(`${API}/admin/status`, { headers: { 'X-API-Key': '' } });
-    // Si no hay clave configurada este fallará — ignorar
-  } catch(e) {}
+    const res = await api('/auth/register', 'POST', {
+      email: document.getElementById('regEmail').value,
+      password: document.getElementById('regPassword').value,
+      name: document.getElementById('regName').value || undefined,
+      company_name: document.getElementById('regCompany').value || undefined,
+    });
+    saveTokens(res); showLoggedIn(res.email); showPage('config');
+    showAlert('configAlert', '¡Cuenta creada! Configura tu perfil para empezar.', 'success');
+  } catch(err) { showAlert('authAlert', err.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Crear cuenta'; }
 }
 
-// ── STATS ─────────────────────────────────────────────────────────────────
+function saveTokens(res) {
+  token = res.access_token;
+  localStorage.setItem('access_token', token);
+  localStorage.setItem('refresh_token', res.refresh_token);
+  localStorage.setItem('user_email', res.email);
+}
+
+function showLoggedIn(email) {
+  email = email || localStorage.getItem('user_email') || '';
+  document.getElementById('navUserEmail').textContent = email;
+  ['btnConfig','btnDash','btnLogout'].forEach(id => document.getElementById(id).style.display = '');
+}
+
+async function logout() {
+  const rt = localStorage.getItem('refresh_token');
+  if (rt) { try { await api('/auth/logout', 'POST', { refresh_token: rt }); } catch {} }
+  localStorage.clear(); token = null;
+  ['btnConfig','btnDash','btnLogout'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('navUserEmail').textContent = '';
+  showPage('auth');
+}
+
+async function loadDashboard() {
+  await Promise.all([loadStats(), loadOpportunities()]);
+}
+
+async function refreshOpportunities() {
+  const btn = document.getElementById('btnRefresh');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Iniciando...';
+  try {
+    const before = await api('/opportunities/stats');
+    await api('/users/me/refresh', 'POST');
+    btn.innerHTML = '<span class="spinner"></span> Analizando con IA...';
+    document.getElementById('oppList').innerHTML = '<div class="loading-state">Analizando compras ágiles con IA... esto tarda ~1 minuto</div>';
+    await pollForNewOpportunities(btn, before.total || 0);
+  } catch(e) {
+    showAlert('dashAlert', e.message, 'error');
+    await loadDashboard();
+    btn.disabled = false;
+    btn.textContent = '🔄 Actualizar';
+  }
+}
+
+async function pollForNewOpportunities(btn, initialTotal) {
+  const maxWait = 90;
+  let elapsed = 0;
+  while (elapsed < maxWait) {
+    await new Promise(r => setTimeout(r, 4000));
+    elapsed += 4;
+    try {
+      const s = await api('/opportunities/stats');
+      btn.innerHTML = `<span class="spinner"></span> Analizando... (${elapsed}s)`;
+      if (s.total > initialTotal) {
+        await loadDashboard();
+        showAlert('dashAlert', `✅ ${s.total - initialTotal} nuevas oportunidades encontradas.`, 'success');
+        btn.disabled = false; btn.textContent = '🔄 Actualizar';
+        return;
+      }
+    } catch(e) { /* sigue esperando */ }
+  }
+  await loadDashboard();
+  showAlert('dashAlert', 'Análisis completado. Si no hay resultados nuevos, intenta de nuevo o ajusta tu prompt.', 'info');
+  btn.disabled = false; btn.textContent = '🔄 Actualizar';
+}
+
+async function resetAndRefresh() {
+  if (!confirm('¿Seguro? Esto borrará todas tus oportunidades actuales y las re-evaluará desde cero con tu prompt actual.')) return;
+  const btnReset = document.getElementById('btnReset');
+  const btnRefresh = document.getElementById('btnRefresh');
+  btnReset.disabled = true; btnRefresh.disabled = true;
+  btnReset.innerHTML = '<span class="spinner"></span> Limpiando...';
+  document.getElementById('oppList').innerHTML = '<div class="loading-state">Borrando resultados anteriores...</div>';
+  try {
+    await api('/opportunities', 'DELETE');
+    await loadStats();
+    btnReset.innerHTML = '<span class="spinner"></span> Analizando...';
+    document.getElementById('oppList').innerHTML = '<div class="loading-state">Re-evaluando con tu prompt actual... (~1 minuto)</div>';
+    await api('/users/me/refresh', 'POST');
+    await pollForNewOpportunities(btnReset, 0);
+  } catch(e) {
+    showAlert('dashAlert', e.message, 'error');
+    await loadDashboard();
+  } finally {
+    btnReset.disabled = false; btnRefresh.disabled = false;
+    btnReset.textContent = '🗑️ Re-evaluar todo';
+    btnRefresh.textContent = '🔄 Actualizar';
+  }
+}
+
 async function loadStats() {
   try {
-    const r = await fetch(`${API}/compras/stats/resumen`);
-    const d = await r.json();
-    document.getElementById('stat-total').textContent = fmt(d.total_compras);
-    document.getElementById('stat-monto').textContent = d.monto_total_sum ? fmtClp(d.monto_total_sum) : '—';
-    document.getElementById('stat-regiones').textContent = d.regiones.length;
-  } catch(e) {}
+    const s = await api('/opportunities/stats');
+    document.getElementById('statTotal').textContent = s.total || 0;
+    document.getElementById('statCotizar').textContent = s.por_accion?.cotizar || 0;
+    document.getElementById('statScore').textContent = s.score_promedio ? s.score_promedio.toFixed(1) : '-';
+    const m = s.monto_total_potencial;
+    document.getElementById('statMonto').textContent = m ? '$' + Math.round(m/1000).toLocaleString('es-CL') + 'K' : '-';
+    document.getElementById('dashSubtitle').textContent = `${s.total} oportunidades encontradas para tu empresa`;
+  } catch(e) { console.error(e); }
 }
 
-// ── NUEVAS INFO ───────────────────────────────────────────────────────────
-async function loadNuevasInfo() {
+async function loadOpportunities(page = 1) {
+  const list = document.getElementById('oppList');
+  list.innerHTML = '<div class="loading-state">Cargando...</div>';
+  const params = new URLSearchParams({ page, page_size: 20, order_by: 'score' });
+  if (currentFilter !== 'all') params.set('accion', currentFilter);
   try {
-    const r = await fetch(`${API}/compras/nuevas/timestamp`);
-    const d = await r.json();
-    const n = d.nuevas || 0;
-    document.getElementById('stat-nuevas').textContent = fmt(n);
-    document.getElementById('tab-nuevas-count').textContent = n;
-    if (d.ultima_actualizacion) {
-      const fecha = new Date(d.ultima_actualizacion + 'Z');
-      document.getElementById('stat-nuevas-fecha').textContent = 'Actualizado ' + timeAgo(fecha);
-      if (n > 0) {
-        const alerta = document.getElementById('alerta-nueva');
-        document.getElementById('alerta-texto').textContent =
-          `✅ ${fmt(n)} órdenes nuevas registradas en la última actualización (${timeAgo(fecha)})`;
-        alerta.classList.remove('hidden');
-      }
+    const data = await api('/opportunities?' + params);
+    if (!data.data.length) {
+      list.innerHTML = '<div class="empty-state"><h3>Sin oportunidades aquí</h3><p>Configura tu perfil o espera al próximo ciclo (cada 2 horas).</p></div>';
+      document.getElementById('pagination').innerHTML = ''; return;
     }
-  } catch(e) {}
+    list.innerHTML = data.data.map(renderOpp).join('');
+    renderPagination(data.page, data.pages);
+  } catch(e) { list.innerHTML = `<div class="alert alert-error">${e.message}</div>`; }
 }
 
-// ── TABS ──────────────────────────────────────────────────────────────────
-function switchTab(tab) {
-  currentTab = tab;
-  currentPage = 1;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  const filtros = document.getElementById('filtros-todas');
-  filtros.style.display = tab === 'todas' ? 'flex' : 'none';
-  loadTablas();
+function renderOpp(o) {
+  const sc = o.score >= 80 ? 'badge-score-high' : o.score >= 60 ? 'badge-score-mid' : 'badge-score-low';
+  const ac = `badge-${o.accion||'ignorar'}`;
+  const monto = o.monto_clp ? '$' + Number(o.monto_clp).toLocaleString('es-CL') + ' CLP' : 'No informado';
+  return `<div class="opp-card">
+    <div class="opp-header">
+      <div style="flex:1"><div class="opp-title">${esc(o.nombre||o.mp_codigo)}</div><div class="opp-org">${esc(o.organismo||'')} · ${esc(o.region||'')}</div></div>
+      <a href="${o.url_mp||'#'}" target="_blank" class="btn btn-outline btn-sm">Ver en MP ↗</a>
+    </div>
+    <div class="opp-meta">
+      <span class="badge ${sc}">Score ${o.score}</span>
+      <span class="badge ${ac}">${o.accion||'ignorar'}</span>
+      <span class="badge" style="background:#f3f4f6">${monto}</span>
+      <span class="badge" style="background:#f3f4f6">Cierre: ${o.fecha_cierre||'N/D'}</span>
+    </div>
+    ${o.resumen ? `<div class="opp-body">${esc(o.resumen)}</div>` : ''}
+    ${o.justificacion ? `<div class="opp-body" style="margin-top:6px;color:#374151">${esc(o.justificacion)}</div>` : ''}
+    <div class="opp-footer">
+      <span style="font-size:.8rem;color:var(--muted)">Estado: <b>${o.estado_seguimiento}</b></span>
+      <select onchange="updateEstado('${o.id}', this.value)" style="padding:4px 8px;font-size:.8rem;width:auto">
+        ${['pendiente','cotizando','ganado','perdido','ignorado'].map(s=>`<option value="${s}"${o.estado_seguimiento===s?' selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
 }
 
-// ── CARGA DE TABLA ────────────────────────────────────────────────────────
-async function loadTablas() {
-  showLoading();
+function renderPagination(page, pages) {
+  const el = document.getElementById('pagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = Array.from({length:pages},(_,i)=>i+1)
+    .map(i=>`<button class="page-btn${i===page?' active':''}" onclick="loadOpportunities(${i})">${i}</button>`)
+    .join('');
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('#filterTabs .tab').forEach((t,i)=>t.classList.toggle('active',['all','cotizar','investigar','ignorar'][i]===f));
+  loadOpportunities(1);
+}
+
+async function updateEstado(id, estado) {
+  try { await api(`/opportunities/${id}`, 'PATCH', { estado_seguimiento: estado }); } catch(e) { console.error(e); }
+}
+
+async function loadConfig() {
   try {
-    let url, data;
-    if (currentTab === 'nuevas') {
-      url = `${API}/compras/nuevas/lista?page=${currentPage}&page_size=50`;
-      const r = await fetch(url);
-      data = await r.json();
-      renderTabla(data, true);
-    } else {
-      const params = buildParams();
-      url = `${API}/compras?${params}`;
-      // Cargar IDs nuevas para resaltarlas
-      await loadNuevasIds();
-      const r = await fetch(url);
-      data = await r.json();
-      renderTabla(data, false);
+    const cfg = await api('/users/me/config');
+    document.getElementById('systemPrompt').value = cfg.system_prompt || '';
+    document.getElementById('minScore').value = cfg.min_score || 60;
+    document.getElementById('minAmount').value = cfg.min_amount_clp || '';
+    document.getElementById('maxAmount').value = cfg.max_amount_clp || '';
+    document.getElementById('telegramChatId').value = cfg.telegram_chat_id || '';
+    document.getElementById('telegramEnabled').checked = cfg.telegram_enabled || false;
+    document.getElementById('businessDescription').value = cfg.business_description || '';
+  } catch(e) { console.error(e); }
+}
+
+async function generatePrompt() {
+  const desc = document.getElementById('businessDescription').value.trim();
+  if (!desc) { showAlert('configAlert','Escribe la descripción de tu empresa primero.','error'); return; }
+  const btn = document.getElementById('btnGeneratePrompt');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner" style="border-top-color:#fff"></span> Generando con IA...';
+  try {
+    const res = await api('/users/me/generate-prompt', 'POST', {
+      business_description: desc,
+      extra_context: document.getElementById('extraContext').value || undefined,
+    });
+    document.getElementById('systemPrompt').value = res.system_prompt;
+    showAlert('configAlert', `✅ Prompt generado (${res.tokens_used} tokens). Revísalo y guarda.`, 'success');
+  } catch(e) { showAlert('configAlert', e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = '✨ Generar prompt con IA'; }
+}
+
+async function saveConfig() {
+  const btn = document.getElementById('btnSaveConfig');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando...';
+  try {
+    await api('/users/me/config', 'PUT', {
+      system_prompt: document.getElementById('systemPrompt').value,
+      min_score: parseInt(document.getElementById('minScore').value) || 60,
+      min_amount_clp: parseInt(document.getElementById('minAmount').value) || 0,
+      max_amount_clp: parseInt(document.getElementById('maxAmount').value) || undefined,
+      telegram_chat_id: document.getElementById('telegramChatId').value || undefined,
+      telegram_enabled: document.getElementById('telegramEnabled').checked,
+      business_description: document.getElementById('businessDescription').value || undefined,
+    });
+    showAlert('configAlert', '✅ Configuración guardada.', 'success');
+  } catch(e) { showAlert('configAlert', e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = '💾 Guardar configuración'; }
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  if (name === 'config') loadConfig();
+  if (name === 'dashboard') loadDashboard();
+}
+
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (res.status === 401) {
+    const rt = localStorage.getItem('refresh_token');
+    if (rt && path !== '/auth/refresh') {
+      try {
+        const rr = await fetch(API + '/auth/refresh', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({refresh_token:rt}) });
+        if (rr.ok) {
+          const rd = await rr.json(); saveTokens(rd);
+          opts.headers['Authorization'] = 'Bearer ' + token;
+          const retry = await fetch(API + path, opts);
+          if (!retry.ok) throw new Error((await retry.json()).detail || 'Error');
+          return retry.status === 204 ? null : retry.json();
+        }
+      } catch {}
     }
-    totalPages = data.pages || 1;
-    renderPaginacion(data);
-  } catch(e) {
-    document.getElementById('tabla-container').innerHTML =
-      `<div class="empty"><div class="empty-icon">⚠️</div>Error al cargar datos. ¿Está la API corriendo?</div>`;
+    logout(); throw new Error('Sesión expirada');
   }
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
 }
 
-async function loadNuevasIds() {
-  try {
-    const r = await fetch(`${API}/compras/nuevas/lista?page=1&page_size=500`);
-    const d = await r.json();
-    nuevasIds = new Set(d.data.map(c => c.id));
-  } catch(e) { nuevasIds = new Set(); }
+function showAlert(cid, msg, type = 'info') {
+  document.getElementById(cid).innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(() => { const el = document.getElementById(cid); if (el) el.innerHTML = ''; }, 5000);
 }
 
-function buildParams() {
-  const p = new URLSearchParams();
-  p.set('page', currentPage);
-  p.set('page_size', 50);
-  p.set('order_by', 'id');
-  p.set('order_dir', 'desc');
-  const q = v('f-q'), region = v('f-region'), org = v('f-organismo'),
-        estado = v('f-estado'), montoMin = v('f-monto-min');
-  if (q) p.set('q', q);
-  if (region) p.set('region', region);
-  if (org) p.set('organismo', org);
-  if (estado) p.set('estado', estado);
-  if (montoMin) p.set('monto_min', montoMin);
-  return p.toString();
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-function clearFilters() {
-  ['f-q','f-region','f-organismo','f-estado','f-monto-min'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  currentPage = 1;
-  loadTablas();
-}
-
-// ── RENDER TABLA ──────────────────────────────────────────────────────────
-function renderTabla(data, soloNuevas) {
-  const items = data.data || [];
-  if (!items.length) {
-    document.getElementById('tabla-container').innerHTML =
-      `<div class="empty"><div class="empty-icon">${soloNuevas ? '🆕' : '🔍'}</div>
-       ${soloNuevas ? 'Sin compras nuevas en este período.' : 'Sin resultados con los filtros actuales.'}</div>`;
-    return;
-  }
-
-  const rows = items.map(c => {
-    const esNueva = soloNuevas || nuevasIds.has(c.id);
-    const estadoClass = estadoBadge(c.estado);
-    return `<tr class="${esNueva ? 'nueva-row' : ''}">
-      <td><span class="text-sm text-suave">${c.codigo_oc || '—'}</span>${esNueva ? '<span class="badge-nueva">NUEVA</span>' : ''}</td>
-      <td class="col-hide">${c.nombre_organismo ? trunc(c.nombre_organismo, 35) : '—'}</td>
-      <td>${c.region || c.region_origen || '—'}</td>
-      <td class="col-hide">${c.nombre_producto ? trunc(c.nombre_producto, 40) : (c.descripcion ? trunc(c.descripcion, 40) : '—')}</td>
-      <td><span class="badge-estado ${estadoClass}">${c.estado || '—'}</span></td>
-      <td class="monto">${c.monto_total ? fmtClp(c.monto_total) : '—'}</td>
-      <td class="col-hide text-suave text-sm">${c.fecha_publicacion ? c.fecha_publicacion.slice(0,10) : '—'}</td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('tabla-container').innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Código OC</th>
-          <th class="col-hide">Organismo</th>
-          <th>Región</th>
-          <th class="col-hide">Producto / Descripción</th>
-          <th>Estado</th>
-          <th style="text-align:right">Monto CLP</th>
-          <th class="col-hide">Publicación</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="paginacion" id="paginacion"></div>`;
-
-  renderPaginacion(data);
-}
-
-function renderPaginacion(data) {
-  const el = document.getElementById('paginacion');
-  if (!el) return;
-  const { total, page, page_size, pages } = data;
-  const desde = ((page - 1) * page_size) + 1;
-  const hasta = Math.min(page * page_size, total);
-  el.innerHTML = `
-    <span class="page-info">${fmt(desde)}–${fmt(hasta)} de ${fmt(total)} registros</span>
-    <div class="page-btns">
-      <button class="page-btn" onclick="goPage(1)" ${page<=1?'disabled':''}>«</button>
-      <button class="page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>‹</button>
-      ${pageButtons(page, pages)}
-      <button class="page-btn" onclick="goPage(${page+1})" ${page>=pages?'disabled':''}>›</button>
-      <button class="page-btn" onclick="goPage(${pages})" ${page>=pages?'disabled':''}>»</button>
-    </div>`;
-}
-
-function pageButtons(current, total) {
-  const pages = [];
-  const range = 2;
-  for (let i = Math.max(1, current - range); i <= Math.min(total, current + range); i++) {
-    pages.push(`<button class="page-btn ${i===current?'active':''}" onclick="goPage(${i})">${i}</button>`);
-  }
-  return pages.join('');
-}
-
-function goPage(p) {
-  currentPage = p;
-  loadTablas();
-  window.scrollTo(0, 0);
-}
-
-// ── HELPERS ───────────────────────────────────────────────────────────────
-function showLoading() {
-  document.getElementById('tabla-container').innerHTML =
-    '<div class="loading"><div class="spinner"></div>Cargando...</div>';
-}
-function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
-function fmt(n) { return (n||0).toLocaleString('es-CL'); }
-function fmtClp(n) {
-  if (n >= 1e9) return '$' + (n/1e9).toFixed(1) + 'B';
-  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
-  return '$' + Math.round(n).toLocaleString('es-CL');
-}
-function trunc(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
-function estadoBadge(e) {
-  if (!e) return 'badge-otro';
-  const l = e.toLowerCase();
-  if (l.includes('acept') || l.includes('vigent') || l.includes('activ')) return 'badge-vigente';
-  if (l.includes('cancel') || l.includes('desierta') || l.includes('cerrad')) return 'badge-cerrado';
-  return 'badge-otro';
-}
-function timeAgo(date) {
-  const diff = (Date.now() - date.getTime()) / 1000;
-  if (diff < 60) return 'hace unos segundos';
-  if (diff < 3600) return `hace ${Math.floor(diff/60)} min`;
-  if (diff < 86400) return `hace ${Math.floor(diff/3600)}h`;
-  return `hace ${Math.floor(diff/86400)} días`;
-}
-
-init();
 </script>
 </body>
 </html>

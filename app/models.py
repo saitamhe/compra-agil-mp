@@ -105,4 +105,4 @@ class HealthResponse(BaseModel):
     db_ok: bool
     scheduler_running: bool
     total_records: int
-    version: str = "1.0.0"
+    version: str = "2.0.0"

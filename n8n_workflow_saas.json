@@ -1,0 +1,54 @@
+{
+  "name": "CompraÁgil SaaS — Pipeline Multi-tenant",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 2 }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cron — Cada 2 Horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://172.17.0.1:8000/admin/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "mercadopublcio2025" }
+          ]
+        }
+      },
+      "id": "trigger-pipeline",
+      "name": "Trigger Pipeline SaaS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-180, 0],
+      "notes": "Dispara el pipeline multi-tenant en FastAPI.\nEste endpoint: fetch MP API → score por usuario → notificaciones Telegram."
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nconst msg = resp.mensaje || JSON.stringify(resp);\nconsole.log('Pipeline disparado:', msg);\nreturn [{ json: { triggered: true, mensaje: msg, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "log-result",
+      "name": "Log Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [60, 0]
+    }
+  ],
+  "connections": {
+    "Cron — Cada 2 Horas": {
+      "main": [[{ "node": "Trigger Pipeline SaaS", "type": "main", "index": 0 }]]
+    },
+    "Trigger Pipeline SaaS": {
+      "main": [[{ "node": "Log Resultado", "type": "main", "index": 0 }]]
+    }
+  },
+  "meta": { "templateCredsSetupCompleted": true }
+}

@@ -1,0 +1,187 @@
+{
+  "name": "CompraÁgil SaaS — Multi-tenant (por usuario)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 2 }]
+        }
+      },
+      "id": "node-cron",
+      "name": "Cron — Cada 2 Horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [-3200, -800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// Paso 1: Obtener usuarios activos + items de MP en paralelo\n// Combinar en pares (usuario × ítem) filtrados por config\n// ============================================================\n\nconst API_BASE = 'http://172.17.0.1:8000';\nconst API_KEY  = 'mercadopublcio2025';\nconst MP_TICKET = 'B62A4372-14A4-4C86-8B06-FFF908CE0FBD';\nconst MP_BASE   = 'https://api2.mercadopublico.cl/v2/compra-agil';\n\n// ---- 1. Obtener usuarios activos con su config ----\nlet usuarios = [];\ntry {\n  const resp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${API_BASE}/admin/users/active`,\n    headers: { 'X-API-Key': API_KEY }\n  });\n  usuarios = Array.isArray(resp) ? resp : [];\n  console.log(`Usuarios activos con prompt: ${usuarios.length}`);\n} catch(e) {\n  console.error('Error obteniendo usuarios:', e.message);\n  return [];\n}\n\nif (usuarios.length === 0) {\n  console.log('Sin usuarios activos con prompt configurado');\n  return [];\n}\n\n// ---- 2. Obtener items de Mercado Público ----\nlet allItems = [];\nlet pagina = 1;\nlet totalPaginas = 1;\nlet reintentos = 0;\n\nwhile (pagina <= totalPaginas && reintentos < 5) {\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: MP_BASE,\n      headers: { 'ticket': MP_TICKET },\n      qs: {\n        region: '10,11,9',\n        estado: 'publicada',\n        tamano_pagina: 50,\n        numero_pagina: pagina\n      }\n    });\n\n    if (resp.success !== 'OK' || !resp.payload?.items) break;\n\n    totalPaginas = resp.payload.paginacion.total_paginas;\n    allItems.push(...resp.payload.items);\n    console.log(`Página MP ${pagina}/${totalPaginas} — ${resp.payload.items.length} items`);\n    reintentos = 0;\n    pagina++;\n    if (pagina <= totalPaginas) await new Promise(r => setTimeout(r, 2000));\n  } catch(err) {\n    if (err.message?.includes('429') || err.response?.status === 429) {\n      reintentos++;\n      await new Promise(r => setTimeout(r, 5000));\n      continue;\n    }\n    console.error('Error MP API:', err.message);\n    break;\n  }\n}\n\nconst itemsConMonto = allItems.filter(i => (i.montos?.monto_disponible_clp ?? 0) > 0);\nconsole.log(`Items MP con monto > 0: ${itemsConMonto.length}`);\n\nif (itemsConMonto.length === 0) return [];\n\n// ---- 3. Dedup global (por código, no repetir lo ya procesado) ----\nconst staticData = $getWorkflowStaticData('global');\nconst processedGlobal = staticData.processedCodes ?? {};\n// processedGlobal = { 'USER_ID:CODIGO': true }\n\n// ---- 4. Crear pares usuario × ítem filtrados ----\nconst pares = [];\n\nfor (const usuario of usuarios) {\n  const regiones = new Set(usuario.regions || ['10', '11', '9']);\n  const minClp   = usuario.min_amount_clp || 0;\n  const maxClp   = usuario.max_amount_clp || null;\n\n  for (const item of itemsConMonto) {\n    const clave = `${usuario.user_id}:${item.codigo}`;\n    if (processedGlobal[clave]) continue; // ya procesado\n\n    // Filtro por región (comparar código numérico de región)\n    const codigoRegion = String(item.institucion?.codigo_region ?? '');\n    const nombreRegion = item.institucion?.nombre_region ?? '';\n    const enRegion = regiones.has(codigoRegion) ||\n      [...regiones].some(r => nombreRegion.toLowerCase().includes(r.toLowerCase()));\n    if (regiones.size > 0 && !enRegion) continue;\n\n    // Filtro por monto\n    const monto = item.montos?.monto_disponible_clp ?? 0;\n    if (monto < minClp) continue;\n    if (maxClp && monto > maxClp) continue;\n\n    const fechaCierre = item.fechas?.fecha_cierre\n      ? item.fechas.fecha_cierre.split(' ')[0]\n      : null;\n    const montoStr = `$${Number(monto).toLocaleString('es-CL')} CLP`;\n    const urlMP = `https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=${item.codigo}`;\n\n    pares.push({\n      // Datos de usuario\n      user_id:          usuario.user_id,\n      user_email:       usuario.email,\n      user_name:        usuario.name,\n      company_name:     usuario.company_name,\n      system_prompt:    usuario.system_prompt,\n      min_score:        usuario.min_score,\n      telegram_chat_id: usuario.telegram_chat_id,\n      telegram_enabled: usuario.telegram_enabled,\n      // Datos del ítem\n      codigo:        item.codigo,\n      nombre:        item.nombre ?? '',\n      organismo:     item.institucion?.organismo_comprador ?? '',\n      unidad_compra: item.institucion?.unidad_compra ?? '',\n      region:        item.institucion?.nombre_region ?? '',\n      monto_clp:     monto,\n      fecha_cierre:  fechaCierre,\n      url_mp:        urlMP,\n      // Prompt para el AI Agent (datos del ítem)\n      user_prompt: `Analiza esta Compra Ágil para ${usuario.company_name || usuario.user_email} y devuelve SOLO JSON:\\n\\nCÓDIGO: ${item.codigo}\\nNOMBRE: ${item.nombre}\\nORGANISMO: ${item.institucion?.organismo_comprador}\\nUNIDAD: ${item.institucion?.unidad_compra}\\nREGIÓN: ${item.institucion?.nombre_region}\\nMONTO: ${montoStr}\\nCIERRE: ${item.fechas?.fecha_cierre ?? 'No disponible'}\\n\\nJSON (sin markdown, sin texto extra):\\n{\\n  \"score\": <0-100>,\\n  \"viabilidad\": \"alta|media|baja\",\\n  \"resumen\": \"<máx 2 líneas>\",\\n  \"justificacion\": \"<máx 3 líneas>\",\\n  \"riesgo\": \"<1 línea>\",\\n  \"accion\": \"cotizar|investigar|ignorar\",\\n  \"precio_sugerido_clp\": <número o null>\\n}`\n    });\n  }\n}\n\nconsole.log(`Pares usuario×ítem a procesar: ${pares.length}`);\n\nif (pares.length === 0) {\n  console.log('Sin pares nuevos para procesar');\n  return [{ json: { message: 'Sin items nuevos', pares: 0 } }];\n}\n\nreturn pares.map(p => ({ json: p }));"
+      },
+      "id": "node-fetch-all",
+      "name": "Fetch MP + Usuarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2900, -800]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_prompt }}",
+        "options": {
+          "systemMessage": "={{ $json.system_prompt }}"
+        }
+      },
+      "id": "node-ai-agent",
+      "name": "AI Agent — Score Personalizado",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [-2480, -800],
+      "notes": "El system_prompt viene dinámicamente de la config del usuario.\nCada usuario tiene su propio perfil de empresa."
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "node-openai-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [-2600, -580],
+      "credentials": {
+        "openAiApi": {
+          "id": "bbPVoYFYcFrb4EUs",
+          "name": "HEFORGE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// Parsear output IA + guardar en PostgreSQL via FastAPI API\n// Marcar ítem como procesado en static data\n// ============================================================\n\nconst API_BASE = 'http://172.17.0.1:8000';\nconst API_KEY  = 'mercadopublcio2025';\n\nconst allInputs = $input.all();\nconst contextos = $('Fetch MP + Usuarios').all();\nconst results   = [];\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.processedCodes) staticData.processedCodes = {};\n\nfor (let i = 0; i < allInputs.length; i++) {\n  const agentOutput = allInputs[i].json.output ?? allInputs[i].json.text ?? JSON.stringify(allInputs[i].json);\n  const ctx = contextos[i]?.json;\n  if (!ctx || !ctx.codigo) continue;\n\n  // Parsear JSON del agente\n  let scoring;\n  try {\n    const clean = String(agentOutput).replace(/```json|```/g, '').trim();\n    const match = clean.match(/\\{[\\s\\S]*\\}/);\n    scoring = JSON.parse(match ? match[0] : clean);\n  } catch(e) {\n    scoring = {\n      score: 0, viabilidad: 'baja',\n      resumen: 'Error al parsear IA',\n      justificacion: String(agentOutput).substring(0, 200),\n      riesgo: 'Error de parsing',\n      accion: 'ignorar',\n      precio_sugerido_clp: null\n    };\n  }\n\n  const score = Number(scoring.score) || 0;\n\n  // Marcar como procesado siempre (evita reprocesar en próxima ejecución)\n  const clave = `${ctx.user_id}:${ctx.codigo}`;\n  staticData.processedCodes[clave] = true;\n\n  // Descartar si score muy bajo\n  if (score < 40) {\n    console.log(`⬇️ Score bajo (${score}) para ${ctx.codigo} / ${ctx.user_email}`);\n    continue;\n  }\n\n  // Guardar en PostgreSQL via FastAPI\n  let opportunityId = null;\n  let created = false;\n  try {\n    const saveResp = await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${API_BASE}/admin/save-opportunity`,\n      headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },\n      body: {\n        user_id:             ctx.user_id,\n        codigo:              ctx.codigo,\n        nombre:              ctx.nombre,\n        organismo:           ctx.organismo,\n        region:              ctx.region,\n        monto_clp:           ctx.monto_clp,\n        fecha_cierre:        ctx.fecha_cierre,\n        url_mp:              ctx.url_mp,\n        score,\n        viabilidad:          scoring.viabilidad ?? 'baja',\n        accion:              scoring.accion ?? 'ignorar',\n        resumen:             (scoring.resumen ?? '').substring(0, 2000),\n        justificacion:       (scoring.justificacion ?? '').substring(0, 2000),\n        riesgo:              (scoring.riesgo ?? '').substring(0, 500),\n        precio_sugerido_clp: scoring.precio_sugerido_clp ?? null\n      }\n    });\n    opportunityId = saveResp.opportunity_id;\n    created       = saveResp.created;\n    console.log(`${created ? '✅ NUEVO' : '⏭️ YA EXISTE'} ${ctx.codigo} / ${ctx.user_email} — score ${score}`);\n  } catch(e) {\n    console.error(`❌ Error guardando ${ctx.codigo}:`, e.message);\n    continue;\n  }\n\n  results.push({ json: {\n    opportunity_id:   opportunityId,\n    created,\n    user_id:          ctx.user_id,\n    user_email:       ctx.user_email,\n    company_name:     ctx.company_name,\n    telegram_chat_id: ctx.telegram_chat_id,\n    telegram_enabled: ctx.telegram_enabled,\n    min_score:        ctx.min_score,\n    codigo:           ctx.codigo,\n    nombre:           ctx.nombre,\n    organismo:        ctx.organismo,\n    region:           ctx.region,\n    monto_clp:        ctx.monto_clp,\n    fecha_cierre:     ctx.fecha_cierre,\n    url_mp:           ctx.url_mp,\n    score,\n    viabilidad:       scoring.viabilidad ?? 'baja',\n    accion:           scoring.accion ?? 'ignorar',\n    resumen:          scoring.resumen ?? '',\n    justificacion:    scoring.justificacion ?? '',\n    riesgo:           scoring.riesgo ?? ''\n  }});\n\n  await new Promise(r => setTimeout(r, 300));\n}\n\nconsole.log(`Guardados: ${results.length}`);\nif (results.length === 0) return [{ json: { message: 'Sin oportunidades nuevas' } }];\nreturn results;"
+      },
+      "id": "node-parsear-guardar",
+      "name": "Parsear + Guardar en BD",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2060, -800]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-score",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": "={{ $json.min_score }}",
+              "operator": { "type": "number", "operation": "gte" }
+            },
+            {
+              "id": "cond-telegram",
+              "leftValue": "={{ $json.telegram_enabled }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            },
+            {
+              "id": "cond-created",
+              "leftValue": "={{ $json.created }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            },
+            {
+              "id": "cond-chat-id",
+              "leftValue": "={{ $json.telegram_chat_id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-telegram",
+      "name": "IF — Notificar Telegram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1740, -800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $vars.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.telegram_chat_id }}\",\n  \"parse_mode\": \"Markdown\",\n  \"disable_web_page_preview\": true,\n  \"text\": \"{{ '🎯 *Score ' + $json.score + '/100 — ' + ($json.accion || '').toUpperCase() + '*\\n\\n📋 *' + $json.nombre + '*\\n🏛 ' + $json.organismo + '\\n📍 ' + $json.region + '\\n💰 $' + (Number($json.monto_clp || 0)).toLocaleString('es-CL') + ' CLP\\n📅 Cierre: ' + ($json.fecha_cierre || 'No disponible') + '\\n\\n' + ($json.viabilidad === 'alta' ? '✅' : $json.viabilidad === 'media' ? '⚠️' : '🔴') + ' *' + ($json.viabilidad || '').toUpperCase() + '* — ' + $json.resumen + '\\n💡 ' + $json.justificacion + '\\n⚠️ ' + $json.riesgo + '\\n\\n🔗 [Ver en MP](' + $json.url_mp + ')' }}\"\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "node-telegram-send",
+      "name": "Telegram — Alerta al Usuario",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-1460, -900],
+      "notes": "Usa la variable TELEGRAM_BOT_TOKEN definida en n8n Variables.\nEl chat_id viene dinámicamente de la config del usuario."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://172.17.0.1:8000/admin/opportunity/{{ $('Parsear + Guardar en BD').item.json.opportunity_id }}/notified",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "mercadopublcio2025" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-marcar-notificado",
+      "name": "Marcar Notificado en BD",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-1220, -900]
+    }
+  ],
+  "connections": {
+    "Cron — Cada 2 Horas": {
+      "main": [[{ "node": "Fetch MP + Usuarios", "type": "main", "index": 0 }]]
+    },
+    "Fetch MP + Usuarios": {
+      "main": [[{ "node": "AI Agent — Score Personalizado", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Agent — Score Personalizado", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent — Score Personalizado": {
+      "main": [[{ "node": "Parsear + Guardar en BD", "type": "main", "index": 0 }]]
+    },
+    "Parsear + Guardar en BD": {
+      "main": [[{ "node": "IF — Notificar Telegram?", "type": "main", "index": 0 }]]
+    },
+    "IF — Notificar Telegram?": {
+      "main": [
+        [{ "node": "Telegram — Alerta al Usuario", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Telegram — Alerta al Usuario": {
+      "main": [[{ "node": "Marcar Notificado en BD", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "2e456212eb200d311f641102ae0f1f4af1b984384fc98aedf73ab9f003654754"
+  }
+}
